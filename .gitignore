@@ -1,0 +1,19 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment variables
+.env
+tvs3_refined/.env
+
+# Logs and Backups
+logs/
+tvs3_refined/logs/
+tvs3_refined/revisions/
+
+# Virtual environments
+.venv/
+tvs3_refined/.venv/
+venv/
+ENV/

@@ -1,0 +1,3 @@
+policy_no,client,client_type,carrier,category,sub_category,premium,claim_amt,commission,status,issue_date,expiry_date
+POL_TVS_999,M. S. Dhoni,Individual/B2C,Bajaj Allianz,Health,Individual,15000,0,1980,Active,2026-06-01,2027-06-01
+POL_TVS_888,Virat Kohli,Corporate/B2B,Hdfc Ergo,Motor,Private Car,45000,12000,5940,Renewed,2026-05-15,2027-05-15

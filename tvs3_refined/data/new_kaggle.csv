@@ -1,0 +1,114 @@
+policy_number,client_name,client_type,carrier_name,category,sub_category,issue_date,expiry_date,premium_amount,policy_status,distribution_channel,claim_amount,claim_status,commission_earned,region
+NEMI3717541TPK312749,Gaurangi Ratta,Individual/B2C,New India Assurance,Other,Cv,2021-05-11 14:40:10,2022-05-11 14:40:10,4305.0,Soft Copy Received,Online,0.0,No Claim,560.2,DL6
+PECC4717827CPI764782,Darika Padmanabhan,Individual/B2C,New India Assurance,Motor,2W,2021-05-11 14:25:05,2022-05-11 14:25:05,4305.0,Policy Issued,Online,0.0,No Claim,567.83,DL7
+AVEX6413879ONH595784,Frederick Balasubramanian,Individual/B2C,New India Assurance,Motor,2W,2021-05-11 14:16:02,2022-05-11 14:16:02,4305.0,Soft Copy Received,Online,0.0,No Claim,354.71,DL13
+AVEX6413879ONH59573,Ramakrishnan PLC,Corporate/B2B,,Health,Individual,2021-05-08 17:24:25,2022-05-08 17:24:25,0.0,Lead,Offline,0.0,No Claim,0.0,DL5
+AVEX6413879ONH594784,Ramesh Inc,Corporate/B2B,,Motor,2W,2021-05-08 17:23:46,2022-05-08 17:23:46,0.0,Lead,Online,0.0,No Claim,0.0,DL1
+AVEX6413879ONH595754,Pall-Andra,Corporate/B2B,,Health,Individual,2021-05-08 17:23:34,2022-05-08 17:23:34,0.0,Lead,Online,0.0,Settled,0.0,DL10
+OHCT1827999MNC781238,Vig Inc,Corporate/B2B,United India,Health,Individual,2021-05-07 17:03:15,2022-05-07 17:03:15,7186.0,Soft Copy Received,Online,0.0,No Claim,1001.55,DL11
+OYQC3967399SVW855355,"Sarraf, Krish and Muni",Corporate/B2B,Royal Sundaram,Motor,4W,2021-05-07 13:28:53,2022-05-07 13:28:53,15098.1,Soft Copy Received,Online,0.0,No Claim,1425.17,DL3
+XIPN3572731MFE258328,Yutika Kale,Individual/B2C,,Motor,2W,2021-05-07 12:01:59,2022-05-07 12:01:59,15098.1,Soft Copy Received,Online,0.0,No Claim,1694.05,DL12
+XIPN3572731MFE258323,Ganguly PLC,Corporate/B2B,,Motor,2W,2021-05-07 11:56:02,2022-05-07 11:56:02,0.0,Lead,Offline,0.0,No Claim,0.0,DL7
+XIPN3572731MFE258327,Nandini Sant,Individual/B2C,,Motor,4W,2021-05-07 11:56:02,2022-05-07 11:56:02,0.0,Lead,Online,0.0,No Claim,0.0,DL2
+XKKD6743339XIS334189,"Kala, Chakrabarti and Shan",Corporate/B2B,Royal Sundaram,Health,Individual,2021-05-07 11:54:36,2022-05-07 11:54:36,15098.1,Soft Copy Received,Online,0.0,No Claim,1603.59,DL8
+XKKD6743339XIS334180,Onkar Dube,Individual/B2C,,Motor,2W,2021-05-07 11:21:35,2022-05-07 11:21:35,0.0,Lead,Online,0.0,No Claim,0.0,DL9
+XVOP8813119GCZ859775,"Nath, Hari and Ramaswamy",Corporate/B2B,Royal Sundaram,Other,Cv,2021-05-07 11:19:48,2022-05-07 11:19:48,15098.1,Soft Copy Received,Online,0.0,No Claim,879.44,DL4
+ZBOS9665834RAR678871,Tanvi Chaudry,Individual/B2C,Universal Sompo,Health,Individual,2021-05-06 14:47:58,2022-05-06 14:47:58,4725.0,Soft Copy Received,Online,0.0,No Claim,513.12,MH01
+FHGK8168371TNJ285849,Chaudhuri Ltd,Corporate/B2B,Universal Sompo,Health,Individual,2021-05-06 14:40:01,2022-05-06 14:40:01,4725.0,Docs And Inspection Pending,Online,4011.43,Settled,515.49,MH03
+KEZC6752966AVQ637248,"Roy, Kothari and Reddy",Corporate/B2B,Bajaj Allianz,Motor,2W,2021-05-06 13:34:36,2022-05-06 13:34:36,1000.0,Policy Issued,Online,1411.81,Settled,57.49,MH02
+QXGZ6975963OFI756494,Bhavika Krishna,Individual/B2C,Universal Sompo,Other,Cv,2021-05-06 12:27:57,2022-05-06 12:27:57,4725.0,Soft Copy Received,Online,0.0,No Claim,353.21,TN03
+ISDB7391184BWH354884,Chaudhry-Ganguly,Corporate/B2B,Bharti AXA,Motor,2W,2021-05-06 11:11:49,2022-05-06 11:11:49,19158.0,Soft Copy Received,Online,0.0,No Claim,1313.07,TN18
+ZWLP7211378MRC349893,Chaman Solanki,Individual/B2C,United India,Other,Cv,2021-05-06 10:42:27,2022-05-06 10:42:27,5757.0,Soft Copy Received,Online,0.0,No Claim,320.77,TN06
+JXBZ2451226TNG194454,"Bhavsar, Sachar and Joshi",Corporate/B2B,United India,Other,Cv,2021-05-06 10:38:47,2022-05-06 10:38:47,5757.0,Caselogin,Online,0.0,No Claim,822.7,TN01
+ZNGM3178189TME232977,Sule Ltd,Corporate/B2B,United India,Health,Individual,2021-05-05 11:53:50,2022-05-05 11:53:50,3400.0,Soft Copy Received,Online,0.0,No Claim,492.38,TN04
+VCVI3961422ECR781837,Oza Inc,Corporate/B2B,Kotak Mahindra,Motor,2W,2021-05-05 11:28:02,2022-05-05 11:28:02,7063.0,Soft Copy Received,Online,0.0,No Claim,514.58,TN05
+BUEH5526225XDR642278,Gupta Group,Corporate/B2B,United India,Other,Cv,2021-05-04 17:52:39,2022-05-04 17:52:39,5465.0,Soft Copy Received,Online,0.0,No Claim,498.45,TN02
+YUZE3492672NPJ152751,"Narula, Grover and Sharma",Corporate/B2B,United India,Motor,2W,2021-05-04 16:19:38,2022-05-04 16:19:38,6952.0,Soft Copy Received,Online,0.0,No Claim,975.04,TN07
+WQQH2825692MBU126173,Kala Kuruvilla,Individual/B2C,United India,Other,Cv,2021-05-04 15:54:18,2022-05-04 15:54:18,6952.0,Docs And Inspection Pending,Online,0.0,No Claim,952.81,TN10
+PKEC5118923PAS634651,Chanakya Ray,Individual/B2C,National Insurance,Motor,2W,2021-05-04 15:15:57,2022-05-04 15:15:57,3931.0,Soft Copy Received,Online,4452.98,Settled,388.07,TN09
+JRBR1873953WZT735265,Neelima Warrior,Individual/B2C,National Insurance,Health,Individual,2021-05-04 13:42:37,2022-05-04 13:42:37,3931.0,Soft Copy Received,Online,0.0,No Claim,361.22,TN22
+MIYT6384653JOX449376,Zilmil Menon,Individual/B2C,National Insurance,Other,Cv,2021-05-04 13:42:29,2022-05-04 13:42:29,3931.0,Soft Copy Received,Online,0.0,No Claim,458.48,WB01
+MGQN3267934OIF397548,Janya Peri,Individual/B2C,United India,Motor,2W,2021-05-04 13:30:21,2022-05-04 13:30:21,1811.0,Policy Issued,Online,0.0,No Claim,95.82,WB02
+XAPH9574481NTG617523,Kai Lata,Individual/B2C,National Insurance,Motor,4W,2021-05-04 12:12:14,2022-05-04 12:12:14,4182.0,Soft Copy Received,Online,0.0,No Claim,584.28,WB03
+OXLL6492352WAF896731,Atwal Group,Corporate/B2B,National Insurance,Motor,4W,2021-05-03 22:15:57,2022-05-03 22:15:57,14046.0,Policy Issued,Online,0.0,No Claim,1593.44,WB04
+WUCV8492351HBK138912,Veer Kibe,Individual/B2C,National Insurance,Motor,4W,2021-05-03 20:05:26,2022-05-03 20:05:26,3801.0,Soft Copy Received,Online,0.0,No Claim,288.14,WB05
+JJHO5319912WNI323124,Ridhi Balan,Individual/B2C,National Insurance,Health,Individual,2021-05-03 20:02:53,2022-05-03 20:02:53,3801.0,Soft Copy Received,Online,5582.04,Registered,527.43,WB07
+DRCY1187798SYC748988,"Chadha, Panchal and Dhillon",Corporate/B2B,National Insurance,Health,Individual,2021-05-03 20:02:00,2022-05-03 20:02:00,3801.0,Soft Copy Received,Online,0.0,No Claim,566.25,WB08
+IWUP2232327PVJ516796,Ethan Taneja,Individual/B2C,National Insurance,Other,Cv,2021-05-03 19:57:37,2022-05-03 19:57:37,4182.0,Docs And Inspection Pending,Offline,0.0,No Claim,279.83,WB09
+EWLP4465535XVQ276618,Vedant Kumer,Individual/B2C,National Insurance,Motor,2W,2021-05-03 19:56:15,2022-05-03 19:56:15,4182.0,Soft Copy Received,Online,0.0,No Claim,461.05,WB10
+VOTF1494155YMA932841,Zashil Mohan,Individual/B2C,National Insurance,Health,Individual,2021-05-03 19:56:14,2022-05-03 19:56:14,4182.0,Soft Copy Received,Online,0.0,No Claim,210.45,WB06
+HNCD1766336YHO818217,Anmol Parekh,Individual/B2C,National Insurance,Other,Cv,2021-05-03 19:56:10,2022-05-03 19:56:10,4182.0,Soft Copy Received,Online,0.0,No Claim,525.15,DL14
+DWIR3297815LKD837588,Iyengar-Krish,Corporate/B2B,National Insurance,Motor,4W,2021-05-03 19:54:07,2022-05-03 19:54:07,4182.0,Soft Copy Received,Online,0.0,No Claim,380.28,TN11
+IKDI4942582DKR173268,Shravya Kohli,Individual/B2C,National Insurance,Motor,4W,2021-05-03 19:53:24,2022-05-03 19:53:24,4182.0,Soft Copy Received,Online,0.0,No Claim,471.61,TS09
+GKTA5745437ARF162535,Maya Sunder,Individual/B2C,National Insurance,Motor,4W,2021-05-03 19:53:25,2022-05-03 19:53:25,4182.0,Caselogin,Online,0.0,No Claim,365.39,TS09
+KJDF3193144TOM447448,Adweta Shah,Individual/B2C,National Insurance,Health,Individual,2021-05-03 19:51:43,2022-05-03 19:51:43,3801.0,Soft Copy Received,Online,0.0,No Claim,503.28,TS10
+TBSO8872217TKJ497282,Pathak-Sekhon,Corporate/B2B,National Insurance,Motor,4W,2021-05-03 19:51:37,2022-05-03 19:51:37,3801.0,Policy Issued,Online,0.0,No Claim,384.58,TS10
+CEYT8924944WHS514741,Borde and Sons,Corporate/B2B,National Insurance,Motor,4W,2021-05-03 19:49:34,2022-05-03 19:49:34,3801.0,Soft Copy Received,Online,0.0,No Claim,469.88,TS10
+TZAN8235738VRS956671,"Roy, Majumdar and Pal",Corporate/B2B,National Insurance,Health,Individual,2021-05-03 19:31:43,2022-05-03 19:31:43,3801.0,Soft Copy Received,Online,0.0,No Claim,216.83,TS11
+VWBT7791877YIV599216,Anjali Peri,Individual/B2C,National Insurance,Other,Cv,2021-05-03 19:31:29,2022-05-03 19:31:29,3801.0,Soft Copy Received,Online,7318.05,Approved,307.93,TS11
+UIIB4594759SNR941765,"Agrawal, Vohra and Kaur",Corporate/B2B,National Insurance,Health,Individual,2021-05-03 19:30:50,2022-05-03 19:30:50,3801.0,Soft Copy Received,Online,0.0,No Claim,559.98,TS11
+LOBW7885457YDQ572262,Varsha Shukla,Individual/B2C,National Insurance,Motor,2W,2021-05-03 18:23:55,2022-05-03 18:23:55,3801.0,Soft Copy Received,Online,3605.45,Registered,439.02,TS11
+FQEV4335343HXH627757,"Devi, Desai and Arya",Corporate/B2B,National Insurance,Motor,4W,2021-05-03 18:19:16,2022-05-03 18:19:16,3801.0,Soft Copy Received,Online,0.0,No Claim,380.26,TS12
+LMMN3922999PFN256932,Chameli Thakkar,Individual/B2C,National Insurance,Motor,2W,2021-05-03 18:19:15,2022-05-03 18:19:15,3801.0,Soft Copy Received,Online,0.0,No Claim,257.23,TS13
+MNAW7659466QVE575616,Master Ltd,Corporate/B2B,Oriental Insurance,Other,Cv,2021-05-03 17:32:06,2022-05-03 17:32:06,5678.0,Policy Issued,Offline,0.0,No Claim,826.95,TS14
+VHAN9638291HEZ775875,Ekaja Badal,Individual/B2C,Royal Sundaram,Other,Cv,2021-05-03 17:19:32,2022-05-03 17:19:32,6416.0,Soft Copy Received,Online,0.0,No Claim,647.98,TS14
+RZVY9685646HSF482996,Turvi Tiwari,Individual/B2C,Magma HDI General Insurance Company Ltd,Motor,4W,2021-05-03 16:22:57,2022-05-03 16:22:57,5465.0,Docs And Inspection Pending,Online,0.0,No Claim,372.17,TN14
+TLYQ2629488SHN213249,Mannan Group,Corporate/B2B,National Insurance,Motor,4W,2021-05-03 16:00:31,2022-05-03 16:00:31,3801.0,Booked,Online,0.0,No Claim,440.47,TN13
+ZOBP7216462JSJ621798,"Thaman, Swamy and Venkataraman",Corporate/B2B,United India,Motor,4W,2021-05-03 09:48:31,2022-05-03 09:48:31,5023.0,Soft Copy Received,Online,0.0,No Claim,323.57,MH47
+MEEL4153189GBL247942,Vinaya Panchal,Individual/B2C,United India,Motor,2W,2021-05-03 09:37:23,2022-05-03 09:37:23,5023.0,Soft Copy Received,Online,0.0,No Claim,298.81,TN12
+RQJC5338625WOB322522,Falan Goswami,Individual/B2C,National Insurance,Motor,2W,2021-05-03 09:33:56,2022-05-03 09:33:56,3801.0,Booked,Online,0.0,No Claim,550.73,KA61
+FEDT3842189NQH596452,Naksh Verma,Individual/B2C,National Insurance,Motor,2W,2021-05-03 09:33:53,2022-05-03 09:33:53,3801.0,Soft Copy Received,Online,0.0,No Claim,456.79,AN02
+LXAS3951833IKI623376,"Bhatia, Chowdhury and Banik",Corporate/B2B,National Insurance,Health,Individual,2021-05-03 09:31:16,2022-05-03 09:31:16,3801.0,Soft Copy Received,Offline,0.0,No Claim,480.89,AN01
+PVBK5755248XAH451485,Ramaswamy Ltd,Corporate/B2B,National Insurance,Motor,2W,2021-05-03 09:30:32,2022-05-03 09:30:32,3801.0,Caselogin,Offline,3817.77,Settled,466.63,AP21
+ZYWO3758938ROY485253,Avi Raja,Individual/B2C,National Insurance,Motor,2W,2021-05-03 09:30:27,2022-05-03 09:30:27,3801.0,Booked,Online,0.0,No Claim,552.16,AP37
+KPPR2533395ILP883167,Karpe and Sons,Corporate/B2B,National Insurance,Motor,2W,2021-05-03 09:29:07,2022-05-03 09:29:07,3801.0,Policy Issued,Offline,4120.5,Approved,390.85,AP27
+JUAT6415265AIK352539,Dhruv Murthy,Individual/B2C,National Insurance,Other,Cv,2021-05-03 09:29:03,2022-05-03 09:29:03,3801.0,Soft Copy Received,Offline,0.0,No Claim,388.09,AP16
+EKDV2234871HOR333899,Ethan Jani,Individual/B2C,National Insurance,Motor,4W,2021-05-03 09:29:01,2022-05-03 09:29:01,3801.0,Booked,Offline,0.0,No Claim,435.33,AP26
+JLHB1673486MGP222622,Qasim Munshi,Individual/B2C,National Insurance,Motor,2W,2021-05-03 09:28:24,2022-05-03 09:28:24,3801.0,Soft Copy Received,Offline,0.0,No Claim,329.63,AP02
+UKVV1726627CPC411998,Max Manne,Individual/B2C,National Insurance,Motor,2W,2021-05-03 09:25:16,2022-05-03 09:25:16,3801.0,Soft Copy Received,Offline,0.0,No Claim,474.86,AP37
+FWXM8363843FAO391312,Khanna Inc,Corporate/B2B,National Insurance,Motor,2W,2021-05-03 09:25:08,2022-05-03 09:25:08,3801.0,Soft Copy Received,Offline,0.0,No Claim,383.37,AP15
+FWXM8363843FAO391311,Setty-Bains,Corporate/B2B,,Motor,4W,2021-05-03 09:22:20,2022-05-03 09:22:20,0.0,Lead,Online,0.0,Registered,0.0,AP26
+FWLF4689154TZH277841,Nakul Sani,Individual/B2C,Future Generali India General Insurance Company Ltd,Motor,4W,2021-05-03 09:21:04,2022-05-03 09:21:04,9019.0,Policy Issued,Offline,0.0,No Claim,616.03,AP09
+TJWF1418181VHV359451,"Boase, Karan and Hayre",Corporate/B2B,Future Generali India General Insurance Company Ltd,Health,Individual,2021-05-03 09:17:34,2022-05-03 09:17:34,3801.0,Booked,Offline,0.0,No Claim,475.91,AP20
+LGLV7575399FSC167671,"Chahal, Ratti and Dass",Corporate/B2B,Future Generali India General Insurance Company Ltd,Other,Cv,2021-05-03 09:15:18,2022-05-03 09:15:18,3801.0,Soft Copy Received,Offline,0.0,No Claim,389.23,AP37
+GOTW2651186HCO354122,Koshy Ltd,Corporate/B2B,Bharti AXA,Motor,2W,2021-05-03 09:13:00,2022-05-03 09:13:00,3801.0,Docs And Inspection Pending,Online,0.0,No Claim,246.09,AP16
+SQAG5527258ZTO825676,Sarkar Inc,Corporate/B2B,National Insurance,Motor,4W,2021-04-30 18:46:51,2022-04-30 18:46:51,3801.0,Soft Copy Received,Offline,0.0,No Claim,429.2,AP16
+TOKZ3274366WNK471537,"Naik, Trivedi and Pandey",Corporate/B2B,Bharti AXA,Motor,4W,2021-04-29 18:26:02,2022-04-29 18:26:02,456345.0,Booked,Online,0.0,No Claim,34096.57,AP03
+NLBK6188314ITI362515,Amara Dalal,Individual/B2C,Bharti AXA,Motor,2W,2021-04-29 18:19:15,2022-04-29 18:19:15,7650.0,Soft Copy Received,Offline,0.0,No Claim,914.97,AP01
+KWTQ3276866RZB382322,Lata Inc,Corporate/B2B,Bharti AXA,Health,Individual,2021-04-29 18:18:54,2022-04-29 18:18:54,7650.0,Soft Copy Received,Offline,0.0,No Claim,510.51,AP27
+IBTL7147878GLP249764,Bera-Cherian,Corporate/B2B,ICICI Lombard General Insurance Company Ltd,Other,Cv,2021-04-28 16:26:03,2022-04-28 16:26:03,8704.0,Caselogin,Offline,0.0,No Claim,870.03,AP24
+HYIE9324774LZA162927,Madhav Devan,Individual/B2C,Bharti AXA,Health,Individual,2021-04-28 15:25:03,2022-04-28 15:25:03,2272.0,Soft Copy Received,Offline,0.0,No Claim,317.63,AP21
+GVCQ5845642FAC633941,"Gaba, Sha and Bose",Corporate/B2B,United India,Motor,4W,2021-04-28 15:20:45,2022-04-28 15:20:45,3539.0,Soft Copy Received,Offline,0.0,No Claim,368.25,AP07
+NZZP1499488LZW716668,Mahika Dave,Individual/B2C,United India,Other,Cv,2021-04-28 13:47:36,2022-04-28 13:47:36,11219.0,Booked,Online,0.0,No Claim,1375.83,AP01
+XZHE5243373OTZ995982,Rana-Agate,Corporate/B2B,United India,Health,Individual,2021-04-28 13:19:11,2022-04-28 13:19:11,1811.0,Policy Issued,Offline,0.0,No Claim,193.67,AP25
+KORT2458776RLO479497,Vaishnavi Borra,Individual/B2C,United India,Motor,2W,2021-04-28 12:27:59,2022-04-28 12:27:59,13299.0,Soft Copy Received,Offline,0.0,No Claim,1695.97,AP16
+KORT2458776RLO479437,Chadha Ltd,Corporate/B2B,,Other,Cv,2021-04-28 11:23:12,2022-04-28 11:23:12,0.0,Lead,Online,0.0,No Claim,0.0,AP22
+EAFX7822534REA482917,Keer-Desai,Corporate/B2B,Bharti AXA,Health,Individual,2021-04-28 09:43:44,2022-04-28 09:43:44,0.0,Soft Copy Received,Offline,0.0,No Claim,0.0,AP15
+UDFC5598611XEI114712,Eshana Salvi,Individual/B2C,Select Insurer,Motor,2W,2021-04-27 17:39:59,2022-04-27 17:39:59,8782.0,Soft Copy Received,Offline,0.0,No Claim,620.25,AP27
+OPDD5778384UUJ657543,Batra LLC,Corporate/B2B,Bajaj Allianz,Health,Individual,2021-04-27 17:40:10,2022-04-27 17:40:10,111111.0,Booked,Offline,0.0,No Claim,8012.8,AP04
+QIQS6551569HEP612542,Dalal LLC,Corporate/B2B,HDFC Ergo General Insurance Company Ltd,Health,Individual,2021-04-27 17:19:26,2022-04-27 17:19:26,877768.0,Docs And Inspection Pending,Online,0.0,No Claim,71466.23,AP06
+NJRW8219116RAF412753,Mittal-Walla,Corporate/B2B,HDFC Ergo General Insurance Company Ltd,Other,Cv,2021-04-27 17:17:43,2022-04-27 17:17:43,88797.0,Soft Copy Received,Offline,0.0,No Claim,8540.64,AP23
+WDKB2382424BXH788159,Vedant Bhatti,Individual/B2C,Universal Sompo,Motor,2W,2021-04-27 16:48:28,2022-04-27 16:48:28,4165.0,Soft Copy Received,Offline,0.0,No Claim,395.26,AP20
+TBGG6564767BOX159211,Kadakia-Hegde,Corporate/B2B,Bajaj Allianz,Health,Individual,2021-04-27 16:15:56,2022-04-27 16:15:56,6002.0,Caselogin,Online,9071.68,Approved,644.62,AP23
+VHWW7673787XFF575464,"Karpe, Toor and Raj",Corporate/B2B,Cholamandalam MS General Insurance Company Ltd,Motor,2W,2021-04-27 15:44:59,2022-04-27 15:44:59,5757.0,Booked,Online,0.0,No Claim,365.07,AP24
+NZFM9363647FCT161636,Patrick Vohra,Individual/B2C,Kotak Mahindra,Health,Individual,2021-04-27 11:46:08,2022-04-27 11:46:08,8084.0,Soft Copy Received,Offline,0.0,No Claim,1088.92,AP37
+COCM6284897YFE442559,Tejas Andra,Individual/B2C,Bajaj Allianz,Other,Cv,2021-04-26 15:47:07,2022-04-26 15:47:07,8295.0,Soft Copy Received,Offline,0.0,No Claim,1110.02,AP37
+COCM6284897YFE442551,Tanmayi Krishnan,Individual/B2C,,Health,Individual,2021-04-26 16:03:16,2022-04-26 16:03:16,0.0,Lead,Online,0.0,No Claim,0.0,AP07
+CJJY3484362TBB516629,Hayre Inc,Corporate/B2B,Bharti AXA,Motor,4W,2021-04-26 14:16:18,2022-04-26 14:16:18,8295.0,Soft Copy Received,Offline,0.0,No Claim,1242.42,AP03
+PHTK2582343UVI194514,Salvi-Arya,Corporate/B2B,United India,Motor,2W,2021-04-26 12:45:44,2022-04-26 12:45:44,7231.0,Soft Copy Received,Offline,0.0,No Claim,607.41,AP36
+JQOY8264668JVY852154,Tandon-Mahal,Corporate/B2B,Iffco Tokio General Insurance Company Ltd,Other,Cv,2021-04-26 12:25:55,2022-04-26 12:25:55,8429.0,Booked,Offline,0.0,No Claim,651.76,AP20
+OAYV1389223WDV493219,Praneel Basak,Individual/B2C,Berkshire Best,Motor,2W,2021-04-26 12:22:00,2022-04-26 12:22:00,8429.0,Policy Issued,Offline,0.0,No Claim,500.94,AR17
+DOYO4884899JMB569521,Zacharia and Sons,Corporate/B2B,Bharti AXA,Motor,2W,2021-04-26 11:58:40,2022-04-26 11:58:40,5635.0,Soft Copy Received,Offline,0.0,No Claim,383.37,AR01
+GDTF8522446QTA976992,Leela Hans,Individual/B2C,The Oriental Insurance Company Ltd,Motor,4W,2021-04-26 11:53:28,2022-04-26 11:53:28,6983.0,Docs And Inspection Pending,Online,0.0,No Claim,971.68,AR02
+VELK9355839VAW523387,Gautami Menon,Individual/B2C,United India,Motor,2W,2021-04-26 11:49:35,2022-04-26 11:49:35,1993.0,Booked,Online,0.0,No Claim,217.64,AS25
+CMHG5873376ICL293618,Isaiah Murty,Individual/B2C,National Insurance,Motor,2W,2021-04-24 15:05:21,2022-04-24 15:05:21,5597.0,Soft Copy Received,Offline,7801.17,Settled,835.49,AS01
+MCPO8272979SJF273771,Matthew Sachdeva,Individual/B2C,Reliance General Insurance Company Ltd,Motor,2W,2021-04-24 13:07:33,2022-04-24 13:07:33,76777.0,Soft Copy Received,Offline,0.0,No Claim,7498.04,AS01
+BRXB5722584YPA454488,Hemangini Chandra,Individual/B2C,Reliance General Insurance Company Ltd,Health,Individual,2021-04-24 13:07:34,2022-04-24 13:07:34,76777.0,Caselogin,Online,0.0,No Claim,9437.79,AS12
+YIRL2188225DHQ587233,Nakul Narasimhan,Individual/B2C,Reliance General Insurance Company Ltd,Other,Cv,2021-04-24 13:07:31,2022-04-24 13:07:31,76777.0,Booked,Offline,0.0,No Claim,4787.27,BR18
+VLDF8425691MHI643643,Chakradhar Sundaram,Individual/B2C,Reliance General Insurance Company Ltd,Motor,4W,2021-04-24 13:07:31,2022-04-24 13:07:31,76777.0,Soft Copy Received,Offline,0.0,No Claim,6376.22,BR12
+TLAY1645439UCB413738,Pillay-Sankar,Corporate/B2B,Reliance General Insurance Company Ltd,Motor,4W,2021-04-24 13:07:27,2022-04-24 13:07:27,76777.0,Soft Copy Received,Offline,0.0,No Claim,10210.53,BR23
+CIVK4419586LAV767983,Pall-Gopal,Corporate/B2B,United India,Motor,4W,2021-04-24 12:37:14,2022-04-24 12:37:14,5023.0,Policy Issued,Offline,0.0,No Claim,319.92,BR36
+KOQV9122179VCM846537,Raksha Lata,Individual/B2C,National Insurance,Other,Cv,2021-04-23 22:23:01,2022-04-23 22:23:01,5597.0,Booked,Offline,0.0,No Claim,739.74,BR41
+HJNB7185271GFE495861,Kar Ltd,Corporate/B2B,National Insurance,Other,Cv,2021-04-23 22:20:56,2022-04-23 22:20:56,5597.0,Soft Copy Received,Offline,0.0,No Claim,372.27,BR16
+NTYS9239697HGL682321,Pandit Group,Corporate/B2B,Berkshire Best,Motor,2W,2021-04-23 14:53:40,2022-04-23 14:53:40,0.0,Soft Copy Received,Offline,0.0,Registered,0.0,BR47
+ETQR5856189EDD278426,Sundaram-Bhatt,Corporate/B2B,HDFC Ergo General Insurance Company Ltd,Health,Individual,2021-04-21 11:10:13,2022-04-21 11:10:13,0.0,Caselogin,Offline,0.0,No Claim,0.0,BR42

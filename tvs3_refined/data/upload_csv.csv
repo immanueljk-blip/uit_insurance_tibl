@@ -1,0 +1,101 @@
+policy_number,client_name,client_type,carrier_name,category,sub_category,issue_date,expiry_date,premium_amount,policy_status,claim_amount,claim_status,commission_earned,distribution_channel
+POL-84481439,Chandran Varty,Individual/B2C,New India Assurance,Motor,CV,2024-09-13,2025-04-21,47648.43,Cancelled,61169.51,Survey Completed,4356.66,Aggregator (PolicyBazaar etc)
+POL-40675638,Yutika Deep,Individual/B2C,HDFC ERGO,Home,Theft,2025-11-14,2025-12-17,45565.5,Active,63661.16,Approved,4106.9,POS Agent Network
+POL-31765259,"Sha, Chandran and Yohannan",Corporate/B2B,HDFC ERGO,Home,Theft,2024-09-19,2025-09-15,59042.44499999999,Expired,0.0,No Claim,575.62,Direct Corporate
+POL-97817019,"Nadkarni, Bhavsar and Madan",Corporate/B2B,HDFC ERGO,Motor,2W,2025-07-11,2025-07-24,23601.795000000002,Cancelled,0.0,No Claim,2149.91,Direct Corporate
+POL-23496010,Wagle and Sons,Corporate/B2B,United India,Home,Theft,2024-08-17,2025-06-01,11498.31,Cancelled,0.0,No Claim,799.55,Referral Network
+POL-87416004,"Aurora, Shanker and Virk",Corporate/B2B,HDFC ERGO,Motor,CV,2026-01-23,2026-03-25,46888.14,Renewed,0.0,No Claim,4364.37,Referral Network
+POL-85405921,Girish Rattan,Individual/B2C,New India Assurance,Travel,Flight,2025-02-03,2025-11-13,42163.2,Cancelled,26575.0,Approved,4610.36,POS Agent Network
+POL-37118320,Devansh Gala,Individual/B2C,New India Assurance,Motor,CV,2024-12-30,2025-01-07,10731.375,Expired,0.0,No Claim,3460.64,POS Agent Network
+POL-52887108,Manan Malhotra,Individual/B2C,Bajaj Allianz,Motor,CV,2026-03-03,2026-09-08,31825.56,Active,0.0,No Claim,1529.44,Direct Web
+POL-76126435,Hans-Shankar,Corporate/B2B,TATA AIG,Travel,Flight,2025-10-07,2026-05-13,72425.385,Expired,0.0,No Claim,858.4,Direct Corporate
+POL-17065424,Wyatt Chad,Individual/B2C,Bajaj Allianz,Motor,2W,2024-10-07,2025-04-19,65371.69499999999,Expired,0.0,No Claim,2559.17,Direct Web
+POL-5454850,Sarraf and Sons,Corporate/B2B,TATA AIG,Health,Group Medi,2025-01-09,2025-06-24,45921.39,Active,0.0,No Claim,2905.56,Direct Corporate
+POL-1035023,Shaurya Aggarwal,Individual/B2C,New India Assurance,Travel,Overseas,2025-12-19,2026-01-01,30711.510000000002,Active,60941.38,Registered,3626.65,POS Agent Network
+POL-93449789,Sehgal-Chakraborty,Corporate/B2B,Bajaj Allianz,Travel,Flight,2025-03-01,2026-01-27,16384.635000000002,Active,0.0,No Claim,3337.99,Direct Corporate
+POL-8940069,Libni Grover,Individual/B2C,Bajaj Allianz,Home,Damage,2025-03-15,2025-05-08,37292.76,Expired,0.0,No Claim,4938.94,POS Agent Network
+POL-69395291,Gala-Nanda,Corporate/B2B,Bajaj Allianz,Health,Group Medi,2024-06-23,2025-04-19,21560.64,Renewed,0.0,No Claim,1607.66,Direct Corporate
+POL-89696673,Morar LLC,Corporate/B2B,ICICI Lombard,Home,Damage,2025-10-23,2026-09-03,8076.0599999999995,Active,0.0,No Claim,2543.76,Referral Network
+POL-77092259,Samarth Keer,Individual/B2C,Bajaj Allianz,Health,Individual,2025-09-28,2026-08-26,29660.925000000003,Expired,0.0,No Claim,3889.84,Direct Web
+POL-8741037,Jagvi Mander,Individual/B2C,HDFC ERGO,Travel,Flight,2025-11-23,2025-11-30,8507.01,Cancelled,0.0,No Claim,1488.87,Direct Web
+POL-91538602,"Chander, Chad and Kibe",Corporate/B2B,United India,Motor,2W,2024-09-27,2025-04-08,48018.87,Active,0.0,No Claim,4961.55,Direct Corporate
+POL-50993101,Vyas-Loke,Corporate/B2B,New India Assurance,Health,Group Medi,2026-03-17,2026-11-04,32571.254999999997,Cancelled,0.0,No Claim,4728.64,Direct Corporate
+POL-72033363,"Wason, Chokshi and Garg",Corporate/B2B,ICICI Lombard,Motor,4W,2024-07-18,2024-09-08,56111.354999999996,Expired,0.0,No Claim,1926.59,Direct Corporate
+POL-25956416,Kumer Ltd,Corporate/B2B,United India,Motor,CV,2025-05-30,2026-02-02,46585.005,Expired,12485.39,Survey Completed,2035.1,Direct Corporate
+POL-30050721,Noah Minhas,Individual/B2C,New India Assurance,Motor,CV,2026-05-30,2027-02-19,16271.130000000001,Renewed,0.0,No Claim,3846.71,POS Agent Network
+POL-65348410,Jagvi Mander,Individual/B2C,ICICI Lombard,Motor,CV,2024-07-23,2025-04-12,68696.205,Active,67031.37,Approved,3362.43,POS Agent Network
+POL-5762100,"Dada, Balan and Bhardwaj",Corporate/B2B,ICICI Lombard,Health,Group Medi,2025-10-02,2026-04-01,17656.050000000003,Renewed,39067.38,Survey Completed,2865.46,Direct Corporate
+POL-93041682,Yasti Ghose,Individual/B2C,TATA AIG,Home,Theft,2026-02-15,2026-08-27,35139.63,Expired,0.0,No Claim,3020.81,Aggregator (PolicyBazaar etc)
+POL-991574,Guneet More,Individual/B2C,Bajaj Allianz,Travel,Overseas,2025-11-05,2026-08-12,13949.175000000001,Renewed,0.0,No Claim,3849.9,Direct Web
+POL-31370617,Rehaan Tailor,Individual/B2C,Bajaj Allianz,Health,Group Medi,2024-10-27,2024-12-05,55637.58,Expired,0.0,No Claim,3439.0,Direct Web
+POL-71079872,Upasna Krishna,Individual/B2C,Bajaj Allianz,Home,Damage,2026-04-11,2026-10-27,35024.19,Expired,0.0,No Claim,3062.69,POS Agent Network
+POL-92753088,Meera Luthra,Individual/B2C,United India,Motor,4W,2025-04-30,2025-10-10,38156.445,Cancelled,0.0,No Claim,2477.0,POS Agent Network
+POL-51708225,Randhawa Ltd,Corporate/B2B,TATA AIG,Travel,Flight,2025-04-22,2025-11-06,48739.53,Expired,67703.04,Settled,1123.8,Referral Network
+POL-63822206,Chakradev Madan,Individual/B2C,New India Assurance,Travel,Flight,2026-01-20,2026-07-11,34702.725000000006,Renewed,61084.09,Registered,660.92,POS Agent Network
+POL-75604295,Jagvi Mander,Individual/B2C,New India Assurance,Motor,4W,2025-03-03,2025-09-28,14129.744999999999,Active,0.0,No Claim,4456.55,Aggregator (PolicyBazaar etc)
+POL-83730472,Farhan Bawa,Individual/B2C,United India,Motor,CV,2024-08-06,2024-10-21,16905.915,Active,0.0,No Claim,4473.82,Aggregator (PolicyBazaar etc)
+POL-41129694,Yochana Karan,Individual/B2C,ICICI Lombard,Motor,CV,2024-08-12,2024-09-07,59104.365000000005,Renewed,0.0,No Claim,1127.06,Direct Web
+POL-69562817,Indrajit Rege,Individual/B2C,HDFC ERGO,Motor,CV,2024-12-07,2025-08-04,58347.645000000004,Cancelled,0.0,No Claim,3515.19,POS Agent Network
+POL-38853746,Shivani Chand,Individual/B2C,New India Assurance,Home,Theft,2025-01-30,2025-11-03,59314.11,Expired,0.0,No Claim,4983.88,Aggregator (PolicyBazaar etc)
+POL-81466971,"Kata, Bose and Bath",Corporate/B2B,Bajaj Allianz,Health,Group Medi,2024-08-29,2025-03-11,37933.125,Cancelled,0.0,No Claim,1319.02,Direct Corporate
+POL-53516517,Tandon-Sandhu,Corporate/B2B,TATA AIG,Motor,CV,2025-02-26,2025-11-04,29640.765,Active,0.0,No Claim,4084.27,Direct Corporate
+POL-47544592,Udant Bali,Individual/B2C,United India,Motor,2W,2025-01-21,2025-09-20,10296.285,Cancelled,0.0,No Claim,1056.47,Direct Web
+POL-53718674,Wyatt Kalla,Individual/B2C,TATA AIG,Home,Theft,2026-03-06,2026-05-11,37155.015,Expired,0.0,No Claim,4106.56,POS Agent Network
+POL-20850630,"Om, Sem and Hari",Corporate/B2B,ICICI Lombard,Travel,Overseas,2024-12-24,2025-11-30,19019.655,Cancelled,0.0,No Claim,3907.14,Direct Corporate
+POL-21139418,Chakrika Kata,Individual/B2C,Bajaj Allianz,Travel,Flight,2024-12-18,2025-06-25,9211.875,Renewed,0.0,No Claim,3307.36,POS Agent Network
+POL-73323426,Frado Bhatti,Individual/B2C,ICICI Lombard,Travel,Flight,2024-07-14,2024-12-05,25009.29,Expired,0.0,No Claim,1219.88,Direct Web
+POL-91410500,Seth-Yohannan,Corporate/B2B,ICICI Lombard,Home,Damage,2025-10-12,2026-03-01,22773.9,Active,0.0,No Claim,3840.55,Direct Corporate
+POL-71559255,Mahal-Naik,Corporate/B2B,Bajaj Allianz,Home,Theft,2024-07-17,2025-07-07,28252.754999999997,Active,0.0,No Claim,4327.34,Direct Corporate
+POL-15568693,Aishani Thaman,Individual/B2C,New India Assurance,Home,Damage,2025-02-05,2025-09-03,71059.995,Expired,0.0,No Claim,1624.51,POS Agent Network
+POL-79721065,Manan Kata,Individual/B2C,United India,Home,Damage,2026-05-15,2026-11-21,13889.655,Expired,62624.84,Registered,2755.39,Direct Web
+POL-47849736,Raagini Iyengar,Individual/B2C,Bajaj Allianz,Motor,4W,2024-09-23,2024-11-08,9875.43,Cancelled,0.0,No Claim,2514.1,POS Agent Network
+POL-58717609,"Raj, Lall and Narasimhan",Corporate/B2B,New India Assurance,Home,Theft,2024-09-27,2025-07-19,38859.555,Expired,0.0,No Claim,2423.03,Direct Corporate
+POL-35153180,Forum Prasad,Individual/B2C,Bajaj Allianz,Health,Individual,2026-04-04,2026-06-18,58071.315,Cancelled,0.0,No Claim,4515.78,POS Agent Network
+POL-89696527,Jagat Prabhu,Individual/B2C,ICICI Lombard,Home,Theft,2025-05-15,2026-03-27,62841.765,Cancelled,29615.73,Settled,3508.27,Direct Web
+POL-48866023,Ekani Anne,Individual/B2C,New India Assurance,Home,Theft,2026-03-29,2027-02-18,24442.5,Active,3664.33,Survey Completed,2186.01,Direct Web
+POL-86471405,Narang Group,Corporate/B2B,TATA AIG,Motor,4W,2026-05-21,2026-09-29,47753.159999999996,Cancelled,0.0,No Claim,1236.19,Direct Corporate
+POL-50158015,Pai LLC,Corporate/B2B,TATA AIG,Motor,4W,2025-07-13,2026-01-04,20303.625,Renewed,0.0,No Claim,3677.42,Direct Corporate
+POL-73257627,Arora PLC,Corporate/B2B,New India Assurance,Travel,Flight,2025-11-26,2025-12-29,35818.68,Expired,0.0,No Claim,4088.75,Direct Corporate
+POL-1026046,"Biswas, Sankar and Hora",Corporate/B2B,TATA AIG,Motor,2W,2025-03-13,2025-04-15,64735.69499999999,Cancelled,0.0,No Claim,3006.9,Direct Corporate
+POL-49165389,Pal Inc,Corporate/B2B,ICICI Lombard,Health,Individual,2026-04-10,2026-08-01,8235.3,Active,0.0,No Claim,4214.37,Direct Corporate
+POL-13668376,Dalbir Kara,Individual/B2C,Bajaj Allianz,Motor,2W,2024-09-05,2025-05-12,69155.45999999999,Cancelled,0.0,No Claim,2115.03,POS Agent Network
+POL-68055714,Harsh Nayak,Individual/B2C,ICICI Lombard,Travel,Flight,2026-04-14,2026-07-03,32730.435,Renewed,0.0,No Claim,4176.46,POS Agent Network
+POL-62887990,Eta Mannan,Individual/B2C,TATA AIG,Motor,CV,2025-02-02,2025-02-19,73072.095,Renewed,0.0,No Claim,1204.1,Aggregator (PolicyBazaar etc)
+POL-88546382,Unni Jain,Individual/B2C,New India Assurance,Health,Individual,2024-10-31,2025-08-24,68010.56999999999,Cancelled,0.0,No Claim,2164.88,POS Agent Network
+POL-88076890,Agrawal and Sons,Corporate/B2B,ICICI Lombard,Motor,CV,2024-09-03,2025-08-15,73756.35,Active,3368.19,Registered,3867.64,Direct Corporate
+POL-24220301,Kiaan Master,Individual/B2C,New India Assurance,Home,Damage,2025-08-28,2026-02-06,68380.935,Expired,0.0,No Claim,2428.11,POS Agent Network
+POL-81349354,Radhika Chaudhari,Individual/B2C,HDFC ERGO,Health,Individual,2024-06-18,2025-03-24,15936.57,Renewed,0.0,No Claim,4109.46,POS Agent Network
+POL-20325301,Krisha Mangal,Individual/B2C,HDFC ERGO,Motor,4W,2026-02-06,2026-04-28,49642.125,Active,18140.96,Settled,3037.7,Aggregator (PolicyBazaar etc)
+POL-4863499,Kiaan Master,Individual/B2C,Bajaj Allianz,Health,Individual,2025-08-02,2025-11-21,51246.674999999996,Renewed,0.0,No Claim,2607.29,POS Agent Network
+POL-99247315,Vedhika Gupta,Individual/B2C,TATA AIG,Health,Individual,2025-06-16,2026-02-19,57455.399999999994,Active,0.0,No Claim,2571.63,POS Agent Network
+POL-7280794,Wable LLC,Corporate/B2B,New India Assurance,Health,Individual,2025-11-11,2026-03-06,41810.175,Renewed,0.0,No Claim,2826.97,Direct Corporate
+POL-90934149,Randhawa LLC,Corporate/B2B,TATA AIG,Home,Theft,2025-02-19,2025-04-18,50171.46,Expired,0.0,No Claim,1072.33,Direct Corporate
+POL-1371714,Rama PLC,Corporate/B2B,New India Assurance,Motor,2W,2024-11-26,2025-02-09,58147.335,Cancelled,1537.46,Registered,709.09,Direct Corporate
+POL-71052155,Taneja-Purohit,Corporate/B2B,New India Assurance,Home,Damage,2024-09-21,2024-10-02,11029.425,Cancelled,0.0,No Claim,1652.33,Direct Corporate
+POL-59243093,Pal LLC,Corporate/B2B,HDFC ERGO,Home,Theft,2024-07-25,2025-03-12,42779.7,Renewed,10755.18,Approved,4948.99,Direct Corporate
+POL-71608119,Kamala Bhalla,Individual/B2C,ICICI Lombard,Travel,Flight,2026-06-09,2027-01-22,68176.605,Renewed,0.0,No Claim,1751.46,POS Agent Network
+POL-64321383,Girik Swamy,Individual/B2C,ICICI Lombard,Travel,Flight,2026-02-06,2026-09-09,71350.5,Cancelled,0.0,No Claim,2526.72,POS Agent Network
+POL-66744836,Shah-Singhal,Corporate/B2B,HDFC ERGO,Motor,2W,2025-02-10,2025-12-06,69813.58499999999,Active,42240.79,Settled,600.63,Direct Corporate
+POL-67031257,Jagat Zachariah,Individual/B2C,TATA AIG,Motor,CV,2025-07-08,2026-03-03,28178.79,Active,29485.42,Settled,3624.6,POS Agent Network
+POL-23646598,Triya Sura,Individual/B2C,New India Assurance,Home,Theft,2025-09-13,2026-03-04,31837.004999999997,Active,2648.24,Approved,1825.55,Direct Web
+POL-92223077,Chakradev Madan,Individual/B2C,ICICI Lombard,Travel,Overseas,2026-01-19,2026-02-18,24999.899999999998,Expired,0.0,No Claim,3105.67,Direct Web
+POL-57980396,Hemani More,Individual/B2C,HDFC ERGO,Motor,CV,2024-12-14,2025-09-15,70613.34,Expired,23316.12,Survey Completed,4000.48,Direct Web
+POL-77102716,Gulati PLC,Corporate/B2B,TATA AIG,Health,Individual,2026-01-31,2027-01-04,69955.995,Renewed,0.0,No Claim,3680.25,Direct Corporate
+POL-96507451,Narayanan-Nadig,Corporate/B2B,ICICI Lombard,Home,Damage,2025-02-24,2025-05-14,74812.065,Cancelled,20611.48,Approved,4797.6,Direct Corporate
+POL-73115037,Baljiwan Krishnan,Individual/B2C,TATA AIG,Health,Individual,2025-09-27,2026-05-17,32022.375,Cancelled,0.0,No Claim,2114.94,POS Agent Network
+POL-69958420,Baljiwan Krishnan,Individual/B2C,United India,Motor,2W,2025-04-26,2025-07-01,27886.935,Renewed,0.0,No Claim,4281.07,POS Agent Network
+POL-2121809,Sai Devan,Individual/B2C,New India Assurance,Health,Individual,2025-06-08,2026-05-28,22723.56,Expired,0.0,No Claim,4624.31,POS Agent Network
+POL-28403924,Mander Ltd,Corporate/B2B,Bajaj Allianz,Travel,Overseas,2025-07-04,2026-02-05,70435.74,Active,0.0,No Claim,3979.35,Referral Network
+POL-88523665,Jhalak Raj,Individual/B2C,HDFC ERGO,Health,Group Medi,2025-09-11,2025-12-10,51908.145000000004,Cancelled,0.0,No Claim,3706.44,POS Agent Network
+POL-64459778,Nikita Shroff,Individual/B2C,HDFC ERGO,Home,Damage,2026-01-27,2026-08-28,61707.56999999999,Expired,0.0,No Claim,4582.75,POS Agent Network
+POL-27497048,"Dash, Chada and Khurana",Corporate/B2B,United India,Motor,2W,2025-04-06,2026-01-02,52096.229999999996,Renewed,0.0,No Claim,2157.16,Direct Corporate
+POL-15546552,Abhimanyu Bawa,Individual/B2C,United India,Health,Individual,2026-01-11,2026-12-09,28111.199999999997,Cancelled,0.0,No Claim,3141.2,Aggregator (PolicyBazaar etc)
+POL-90447031,Unni Jain,Individual/B2C,United India,Travel,Flight,2026-05-02,2026-07-09,26878.02,Renewed,62957.54,Settled,504.67,Direct Web
+POL-55956392,Taneja-Purohit,Corporate/B2B,New India Assurance,Motor,CV,2025-02-24,2025-03-24,12875.97,Expired,58312.67,Survey Completed,3309.48,Referral Network
+POL-14130923,Jhalak Butala,Individual/B2C,ICICI Lombard,Health,Individual,2025-01-02,2025-10-21,30278.129999999997,Expired,24944.79,Approved,673.25,Direct Web
+POL-45757416,Mitali Goswami,Individual/B2C,HDFC ERGO,Travel,Overseas,2025-11-11,2026-06-08,47862.63,Renewed,0.0,No Claim,2076.39,Direct Web
+POL-18652571,Sai Devan,Individual/B2C,United India,Home,Damage,2025-02-27,2025-10-09,63165.225000000006,Active,0.0,No Claim,4114.61,POS Agent Network
+POL-84303501,"Tank, Kade and Rege",Corporate/B2B,HDFC ERGO,Travel,Flight,2024-12-09,2025-05-15,13709.189999999999,Renewed,0.0,No Claim,4534.04,Direct Corporate
+POL-11004906,"Sen, Ramesh and Chawla",Corporate/B2B,TATA AIG,Health,Group Medi,2024-07-28,2024-07-30,53109.0,Active,0.0,No Claim,3391.78,Referral Network
+POL-66526780,"Sen, Ramesh and Chawla",Corporate/B2B,TATA AIG,Motor,CV,2024-12-27,2025-05-16,18496.035,Active,0.0,No Claim,1802.19,Direct Corporate
+POL-99006680,Chowdhury and Sons,Corporate/B2B,Bajaj Allianz,Motor,4W,2025-07-22,2025-09-07,14362.5,Active,57969.68,Settled,1791.87,Direct Corporate

@@ -1,0 +1,2 @@
+policy_number,client_name,client_type,carrier_name,category,sub_category,premium_amount,claim_amount,commission_earned,policy_status,issue_date,expiry_date,region,distribution_channel,claim_status
+POL-TEST-UPD,Varun Gupta,Individual/B2C,Tata Aig,Motor,4W,22000,3500,2200,Active,2026-06-01,2028-06-01,DL,Online,Approved

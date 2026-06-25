@@ -1,0 +1,1001 @@
+/* ============================================================
+   TVS Insurance Executive Dashboard — Sidebar Layout v4
+   Blue: #1B3B8B  |  Orange: #E55B13
+   Font: Plus Jakarta Sans (primary), Inter (fallback)
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+/* ── CSS Variables ─────────────────────────────────────────── */
+:root {
+  --tvs-blue:        #1B3B8B;
+  --tvs-blue-mid:    #2B55C5;
+  --tvs-blue-dark:   #0f266b;
+  --tvs-orange:      #E55B13;
+  --tvs-orange-lt:   #FF8C4B;
+  --green:           #10B981;
+  --red:             #EF4444;
+  --amber:           #F59E0B;
+  --purple:          #8B5CF6;
+  --bg-page:         #EEF2FB;
+  --bg-card:         #FFFFFF;
+  --text-primary:    #1a1a2e;
+  --text-muted:      #6B7280;
+  --text-faint:      #9CA3AF;
+  --border:          #E5E7EB;
+  --sidebar-w:       210px;
+  --topbar-h:        54px;
+  --shadow-sm:       0 1px 4px rgba(27,59,139,0.07);
+  --shadow:          0 2px 12px rgba(27,59,139,0.09);
+  --shadow-lg:       0 8px 32px rgba(27,59,139,0.16);
+  --radius:          10px;
+  --content-gap:     6px;
+}
+
+/* ── Global Reset ──────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+body {
+  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif !important;
+  background-color: var(--bg-page) !important;
+  color: var(--text-primary) !important;
+  margin: 0;
+}
+
+/* ============================================================
+   PAGE SHELL — vertical flex: topbar | bottom (sidebar + main)
+   ============================================================ */
+#page-content {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ============================================================
+   SIDEBAR
+   ============================================================ */
+.sidebar {
+  width: 62px; /* Collapsed width */
+  min-width: 62px;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(180deg, #1B3B8B 0%, #102060 100%);
+  border-right: 3px solid var(--tvs-orange);
+  overflow: hidden;
+  flex-shrink: 0;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.sidebar:hover {
+  width: var(--sidebar-w); /* 210px expanded */
+}
+
+/* Brand / Logo area */
+.sidebar-brand {
+  background: #ffffff;
+  padding: 10px 8px 8px;
+  text-align: center;
+  flex-shrink: 0;
+  border-bottom: 2px solid rgba(244,121,32,0.35);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.sidebar-logo-img {
+  width: 44px !important;
+  transition: width 0.3s ease;
+}
+.sidebar:hover .sidebar-logo-img {
+  width: 150px !important;
+}
+
+/* Hide text elements when collapsed */
+.sidebar-brand-text,
+.sidebar-nav-label,
+.nav-label,
+.sidebar-footer-text {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease, visibility 0.2s;
+}
+.sidebar:hover .sidebar-brand-text,
+.sidebar:hover .sidebar-nav-label,
+.sidebar:hover .nav-label,
+.sidebar:hover .sidebar-footer-text {
+  opacity: 1;
+  visibility: visible;
+  transition-delay: 0.1s; /* wait slightly for expansion before showing text */
+}
+
+/* "NAVIGATION" section label */
+.sidebar-nav-label {
+  font-size: 9.5px;
+  font-weight: 800;
+  color: rgba(255,255,255,0.55);
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  padding: 16px 16px 8px;
+  flex-shrink: 0;
+}
+
+/* Nav button list */
+#nav-group-row {
+  display: flex;
+  flex-direction: column;
+  padding: 4px 6px;
+  gap: 3px;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+}
+.sidebar:hover #nav-group-row {
+  padding: 4px 10px;
+}
+#nav-group-row::-webkit-scrollbar { display: none; }
+
+/* Individual nav button */
+.nav-group-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 12px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(255,255,255,0.60);
+  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.18s ease;
+  outline: none;
+  position: relative;
+  overflow: hidden;
+}
+.nav-group-btn:hover {
+  background: rgba(255,255,255,0.09);
+  color: rgba(255,255,255,0.92);
+}
+.nav-group-btn--active,
+.nav-group-btn.active {
+  background: rgba(244,121,32,0.16) !important;
+  color: #ffffff !important;
+  font-weight: 800 !important;
+  border-left: 3px solid var(--tvs-orange);
+  padding-left: 9px;  /* compensate for border */
+}
+.nav-group-btn--active::after {
+  content: "";
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 5px;
+  height: 5px;
+  background: var(--tvs-orange);
+  border-radius: 50%;
+}
+
+/* Nav icon */
+.nav-icon {
+  font-size: 14px;
+  width: 18px;
+  text-align: center;
+  flex-shrink: 0;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.2s ease;
+}
+.nav-group-btn:hover .nav-icon {
+  transform: scale(1.18);
+  color: var(--tvs-orange) !important;
+}
+.nav-label { flex: 1; }
+
+/* Sidebar footer */
+.sidebar-footer {
+  flex-shrink: 0;
+  padding: 12px 16px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+
+/* ============================================================
+   MAIN CONTENT AREA
+   ============================================================ */
+.main-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-page);
+}
+
+/* ============================================================
+   TOP BAR
+   ============================================================ */
+.topbar {
+  height: var(--topbar-h);
+  display: flex;
+  align-items: center;
+  background: #ffffff;
+  border-bottom: 2px solid var(--tvs-orange);
+  padding: 0 16px;
+  flex-shrink: 0;
+  box-shadow: 0 2px 10px rgba(27,59,139,0.07);
+  gap: 0;
+  overflow: hidden;
+}
+
+/* Topbar left: breadcrumb + sub-tabs */
+.topbar-left {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  flex: 1;
+  min-width: 0;
+  gap: 2px;
+}
+
+/* Breadcrumb text */
+.topbar-breadcrumb {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  line-height: 1;
+}
+
+/* Sub-tab strip (pill style, hidden when single) */
+#sub-tab-strip {
+  display: flex;
+  align-items: center;
+}
+#sub-tab-strip.sub-tab-strip--single { display: none !important; }
+
+/* Sub-tab radio labels — pill style */
+.dash-tab-radio label {
+  padding: 3px 13px !important;
+  cursor: pointer !important;
+  font-weight: 600 !important;
+  font-size: 11px !important;
+  color: var(--text-muted) !important;
+  border-radius: 20px !important;
+  margin-right: 4px !important;
+  border: 1.5px solid transparent !important;
+  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif !important;
+  user-select: none !important;
+  display: inline-block !important;
+  transition: all 0.18s ease !important;
+  background: transparent !important;
+}
+.dash-tab-radio label:hover {
+  color: var(--tvs-blue) !important;
+  background: rgba(27,59,139,0.06) !important;
+}
+.dash-tab-radio label:has(input:checked) {
+  color: var(--tvs-blue) !important;
+  font-weight: 700 !important;
+  background: rgba(27,59,139,0.08) !important;
+  border-color: rgba(27,59,139,0.20) !important;
+}
+.dash-tab-radio input { display: none !important; }
+
+/* Topbar right: actions */
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* ICR chip in topbar */
+.topbar-kpi-chip {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--tvs-blue);
+  background: rgba(27,59,139,0.07);
+  border: 1px solid rgba(27,59,139,0.15);
+  border-radius: 20px;
+  padding: 3px 10px;
+  white-space: nowrap;
+}
+
+/* Record count in topbar */
+.topbar-record-count {
+  font-size: 10px;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+
+/* Vertical divider */
+.topbar-divider {
+  width: 1px;
+  height: 28px;
+  background: var(--border);
+  margin: 0 6px;
+  flex-shrink: 0;
+}
+
+/* Upload zone styling in topbar */
+.topbar .dcc-upload { transition: border-color 0.2s, background 0.2s; }
+.topbar .dcc-upload:hover {
+  border-color: var(--tvs-blue) !important;
+  background: rgba(27,59,139,0.08) !important;
+}
+
+/* ── Topbar Buttons ──────────────────────────────────────────── */
+.hdr-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 13px;
+  border-radius: 8px;
+  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  outline: none;
+  letter-spacing: 0.2px;
+}
+.hdr-btn--outline {
+  background: transparent;
+  border: 1.5px solid var(--border);
+  color: var(--text-muted);
+}
+.hdr-btn--outline:hover {
+  border-color: var(--red);
+  color: var(--red);
+  background: rgba(239,68,68,0.05);
+}
+.hdr-btn--green {
+  background: rgba(16,185,129,0.10);
+  border: 1.5px solid rgba(16,185,129,0.35);
+  color: #10B981;
+}
+.hdr-btn--green:hover {
+  background: rgba(16,185,129,0.20);
+  border-color: rgba(16,185,129,0.60);
+  color: #059669;
+  box-shadow: 0 0 12px rgba(16,185,129,0.20);
+}
+
+/* ============================================================
+   TAB CONTENT
+   ============================================================ */
+/* Branded scrollbar — sleek, thin, floats on the edge */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--tvs-blue) !important;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--tvs-orange) !important;
+}
+::-webkit-scrollbar-thumb:active {
+  background: var(--tvs-orange) !important;
+}
+
+/* Scroll wrapper — explicit scrollbar for main content area */
+.scroll-wrapper {
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: var(--tvs-blue) transparent;
+  transition: scrollbar-color 0.3s ease;
+}
+
+/* Hovering the content area transitions the scrollbar color in Firefox */
+.scroll-wrapper:hover {
+  scrollbar-color: var(--tvs-orange) transparent;
+}
+
+.scroll-wrapper::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.scroll-wrapper::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scroll-wrapper::-webkit-scrollbar-thumb {
+  background: var(--tvs-blue) !important;
+  border-radius: 10px;
+}
+.scroll-wrapper::-webkit-scrollbar-thumb:hover {
+  background: var(--tvs-orange) !important;
+}
+.scroll-wrapper::-webkit-scrollbar-thumb:active {
+  background: var(--tvs-orange) !important;
+}
+/* ── Tab Pane — flex column fill ── */
+.tab-pane {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--content-gap);
+}
+
+/* Chart section */
+.tab-pane-charts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--content-gap);
+  padding-bottom: 20px; /* Extra padding at bottom for scroll clearance */
+}
+
+/* One horizontal row of charts */
+.tab-pane-row {
+  height: 450px; /* Solid fixed height for charts so they are never cropped */
+  flex-shrink: 0; /* Prevent flexbox from squishing the row */
+  display: flex;
+  gap: var(--content-gap);
+}
+
+/* ============================================================
+   KPI CARD STRIP
+   ============================================================ */
+.kpi-row {
+  display: flex;
+  gap: var(--content-gap);
+  flex-shrink: 0;
+  min-height: 76px;
+}
+
+.kpi-col {
+  flex: 1;
+  min-width: 0;
+}
+
+.kpi-card-premium {
+  background: #ffffff;
+  border-radius: 10px;
+  padding: 10px 14px;
+  height: 100%;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(229,231,235,0.80);
+  border-left: 4px solid var(--card-color, var(--tvs-blue));
+  transition: box-shadow 0.18s ease, transform 0.18s ease;
+}
+.kpi-card-premium:hover {
+  box-shadow: 0 10px 25px rgba(27, 59, 139, 0.12);
+  transform: translateY(-3px) scale(1.01);
+}
+/* Subtle accent glow on left border */
+.kpi-card-premium::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 4px;
+  background: var(--card-color, var(--tvs-blue));
+  border-radius: 10px 0 0 10px;
+}
+
+.kpi-card-premium .kpi-title {
+  color: var(--text-faint);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  line-height: 1;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
+}
+.kpi-card-premium .kpi-value {
+  color: var(--text-primary);
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.5px;
+  flex-shrink: 0;
+}
+.kpi-card-premium .kpi-sub {
+  color: var(--sub-color, var(--green));
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.2;
+  margin-top: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
+}
+.kpi-card-premium .kpi-spark {
+  height: 28px !important;
+  margin-top: 4px;
+  flex-shrink: 0;
+}
+.kpi-card-premium .kpi-spark .js-plotly-plot,
+.kpi-card-premium .kpi-spark .plot-container {
+  height: 28px !important;
+}
+
+/* ============================================================
+   CHART CARDS — flex-fill system
+   ============================================================ */
+.chart-card-flex {
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  transition: box-shadow 0.18s ease;
+}
+.chart-card-flex:hover { box-shadow: var(--shadow); }
+
+.chart-card-flex .chart-title {
+  font-size: 11.5px;
+  font-weight: 800;
+  color: var(--tvs-blue);
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.chart-card-flex .js-plotly-plot,
+.chart-card-flex .plot-container,
+.chart-card-flex .dash-graph {
+  flex: 1;
+  min-height: 0 !important;
+}
+
+/* ── Generic content card (tables / panels) ── */
+.content-card-flex {
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* Tables that scroll internally */
+.content-card-flex--scroll {
+  overflow-y: hidden;
+}
+
+
+/* Legacy wrap_chart */
+.chart-card {
+  background: white;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+.chart-card:hover { box-shadow: var(--shadow-lg); transform: translateY(-1px); }
+.chart-fill { height: 100% !important; overflow: hidden !important; }
+
+/* ============================================================
+   CALLOUT BOXES
+   ============================================================ */
+.callout-warning {
+  background: linear-gradient(135deg, #FFF8F0, #FFEEDC);
+  border-left: 4px solid var(--tvs-orange);
+  border-radius: var(--radius);
+  color: #7B3A00;
+  font-weight: 600;
+  padding: 14px 18px;
+  box-shadow: 0 2px 8px rgba(244,121,32,0.10);
+}
+.callout-danger {
+  background: linear-gradient(135deg, #FFF0F0, #FFE0E0);
+  border-left: 4px solid var(--red);
+  border-radius: var(--radius);
+  color: #7B0000;
+  font-weight: 600;
+  padding: 14px 18px;
+  box-shadow: 0 2px 8px rgba(220,38,38,0.10);
+}
+
+/* ============================================================
+   PIVOT BUTTONS
+   ============================================================ */
+.pivot-btn {
+  background: white !important;
+  color: var(--tvs-blue) !important;
+  border: 2px solid var(--tvs-blue) !important;
+  border-radius: 12px !important;
+  font-weight: 700 !important;
+  font-size: 13px !important;
+  padding: 16px 12px !important;
+  transition: all 0.22s ease !important;
+  width: 100%; text-align: center; line-height: 1.4;
+  min-height: 90px;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+.pivot-btn:hover {
+  background: var(--tvs-blue) !important;
+  color: white !important;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(27,59,139,0.26) !important;
+}
+.pivot-btn.orange-btn { border-color: var(--tvs-orange) !important; color: var(--tvs-orange) !important; }
+.pivot-btn.orange-btn:hover { background: var(--tvs-orange) !important; color: white !important; }
+
+/* ============================================================
+   MODALS
+   ============================================================ */
+.modal-content {
+  border-radius: 14px !important; border: none !important;
+  box-shadow: 0 20px 60px rgba(27,59,139,0.22) !important; overflow: hidden;
+}
+.modal-header {
+  background: linear-gradient(90deg, var(--tvs-blue) 0%, var(--tvs-blue-mid) 100%);
+  color: white !important;
+  border-bottom: 3px solid var(--tvs-orange) !important;
+  padding: 16px 22px !important;
+}
+.modal-title { color: white !important; font-weight: 700 !important; }
+.modal-footer { background: #F8FAFF; border-top: 1px solid var(--border); }
+.btn-close { filter: invert(1) !important; }
+
+/* ============================================================
+   DASH TABLE EXPORT
+   ============================================================ */
+.export {
+  background: var(--tvs-blue) !important; color: white !important;
+  border-radius: 6px !important; padding: 5px 12px !important;
+  font-size: 11px !important; font-weight: 600 !important;
+  border: none !important; margin-bottom: 8px !important;
+}
+
+/* ============================================================
+   LOADING SPINNER
+   ============================================================ */
+._dash-loading { margin: 60px auto !important; }
+
+/* ============================================================
+   RESET FILTER BUTTON
+   ============================================================ */
+#btn-reset-filters {
+  background: var(--tvs-orange) !important;
+  border-color: var(--tvs-orange) !important;
+  color: white !important; font-weight: 700;
+  border-radius: 8px !important; transition: all 0.2s ease;
+}
+#btn-reset-filters:hover {
+  background: var(--tvs-orange-lt) !important;
+  border-color: var(--tvs-orange-lt) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(244,121,32,0.35);
+}
+
+/* ============================================================
+   PIVOT EXPLORER
+   ============================================================ */
+.pivot-shell { height: 100%; display: flex; flex-direction: column; overflow: hidden; gap: var(--content-gap); }
+.pivot-controls {
+  flex-shrink: 0; background: white; border-radius: var(--radius);
+  padding: 8px 12px; border: 1px solid var(--border); box-shadow: var(--shadow-sm);
+}
+.pivot-results { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: var(--content-gap); overflow: hidden; }
+.pivot-results .pivot-chart-row { flex: 1; min-height: 0; }
+.pivot-results .pivot-table-row {
+  height: auto; flex-shrink: 0; overflow-y: hidden;
+  background: white; border-radius: var(--radius); padding: 8px 10px; border: 1px solid var(--border);
+}
+
+/* ============================================================
+   DATATABLE EXPORT BUTTON
+   ============================================================ */
+.dash-spreadsheet-menu {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 6px;
+}
+.dash-spreadsheet-menu button.export {
+  background-color: var(--tvs-blue);
+  color: white;
+  border: none;
+  padding: 5px 12px;
+  border-radius: 4px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.dash-spreadsheet-menu button.export:hover {
+  background-color: var(--tvs-orange);
+  box-shadow: 0 2px 6px rgba(244,121,32,0.3);
+}
+
+/* ============================================================
+   PREMIUM SLIDER STYLING
+   ============================================================ */
+.premium-slider .rc-slider-track {
+    background: linear-gradient(90deg, #93C5FD, var(--tvs-blue)) !important;
+    height: 8px !important;
+    border-radius: 4px !important;
+}
+.premium-slider .rc-slider-rail {
+    background-color: #e5e7eb !important;
+    height: 8px !important;
+    border-radius: 4px !important;
+}
+.premium-slider .rc-slider-handle {
+    width: 24px !important;
+    height: 24px !important;
+    margin-top: -8px !important;
+    border: 3px solid white !important;
+    background-color: var(--tvs-blue) !important;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.25) !important;
+    opacity: 1 !important;
+    cursor: grab !important;
+}
+.premium-slider .rc-slider-handle:hover,
+.premium-slider .rc-slider-handle:active {
+    box-shadow: 0 0 0 6px rgba(27, 59, 139, 0.15) !important;
+    border-color: white !important;
+    cursor: grabbing !important;
+}
+.premium-slider .rc-slider-mark-text {
+    font-weight: 600 !important;
+    color: #6b7280 !important;
+    margin-top: 8px !important;
+    font-size: 11px !important;
+}
+
+
+/* ============================================================
+   HEADER VERIFICATION CHECKLIST - Pill Layout
+   ============================================================ */
+.checklist-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 6px;
+}
+
+.checklist-grid label {
+  display: inline-flex !important;
+  align-items: center;
+  background: #F3F4F6;
+  border: 1.5px solid #E5E7EB;
+  padding: 3px 6px;
+  border-radius: 5px;
+  font-size: 9.5px;
+  font-weight: 600;
+  color: #4B5563;
+  cursor: pointer;
+  margin: 0 !important;
+  transition: all 0.2s ease-in-out;
+  user-select: none;
+}
+
+.checklist-grid label:hover {
+  background: #E5E7EB;
+  border-color: #D1D5DB;
+  color: #1F2937;
+}
+
+.checklist-grid label input[type="checkbox"] {
+  margin-right: 6px !important;
+  width: 13px;
+  height: 13px;
+  accent-color: #E55B13;
+  cursor: pointer;
+}
+
+/* Beautiful green pill state when ticked! */
+.checklist-grid label:has(input:checked) {
+  background: #ECFDF5 !important;
+  border-color: #A7F3D0 !important;
+  color: #065F46 !important;
+  box-shadow: 0 2px 4px rgba(16,185,129,0.06);
+}
+
+.checklist-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.checklist-counter {
+  font-size: 10px;
+  font-weight: 800;
+  background: #FEF3C7;
+  color: #D97706;
+  border: 1px solid #FCD34D;
+  padding: 2px 8px;
+  border-radius: 20px;
+  transition: all 0.25s ease;
+  line-height: 1;
+}
+
+.checklist-counter--complete {
+  background: #D1FAE5 !important;
+  color: #065F46 !important;
+  border-color: #A7F3D0 !important;
+  box-shadow: 0 0 8px rgba(16,185,129,0.15);
+}
+
+/* Premium Table Row Hover Highlighting */
+tbody tr {
+  transition: background-color 0.15s ease;
+}
+tbody tr:hover {
+  background-color: rgba(244, 121, 32, 0.04) !important;
+}
+
+/* Gold Theme KPI Card */
+.kpi-card-premium--gold {
+  border-left-color: #D4AF37 !important;
+  --card-color: #D4AF37 !important;
+}
+.kpi-card-premium--gold .kpi-value {
+  color: #B38F1E !important;
+}
+
+/* Violet Theme KPI Card */
+.kpi-card-premium--violet {
+  border-left-color: #7C3AED !important;
+  --card-color: #7C3AED !important;
+}
+.kpi-card-premium--violet .kpi-value {
+  color: #6D28D9 !important;
+}
+
+/* Emerald Theme KPI Card */
+.kpi-card-premium--emerald {
+  border-left-color: #10B981 !important;
+  --card-color: #10B981 !important;
+}
+.kpi-card-premium--emerald .kpi-value {
+  color: #059669 !important;
+}
+
+/* TVS Blue Theme KPI Card */
+.kpi-card-premium--tvs-blue {
+  border-left-color: var(--tvs-blue) !important;
+  --card-color: var(--tvs-blue) !important;
+}
+.kpi-card-premium--tvs-blue .kpi-value {
+  color: var(--tvs-blue) !important;
+}
+
+/* TVS Orange Theme KPI Card */
+.kpi-card-premium--tvs-orange {
+  border-left-color: var(--tvs-orange) !important;
+  --card-color: var(--tvs-orange) !important;
+}
+.kpi-card-premium--tvs-orange .kpi-value {
+  color: var(--tvs-orange) !important;
+}
+
+
+/* ============================================================
+   LEAD TRACKER MODULE (tab-14)
+   ============================================================ */
+
+/* Sub-tab strip */
+.lt-tab {
+  background: #F0F4FF !important;
+  border: 1px solid #D1D9F0 !important;
+  border-bottom: none !important;
+  color: var(--tvs-blue) !important;
+  font-family: 'Plus Jakarta Sans', Inter, sans-serif !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  padding: 8px 16px !important;
+  border-radius: 8px 8px 0 0 !important;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+.lt-tab:hover {
+  background: #E0EAFF !important;
+}
+.lt-tab--active {
+  background: var(--tvs-blue) !important;
+  color: white !important;
+  border-color: var(--tvs-blue) !important;
+}
+
+/* Dcc.Tabs container for lead tracker */
+#lt-subtab > .tab-container > .tab {
+  flex: 1;
+}
+#lt-subtab .tab-content {
+  display: none !important;  /* sub-tabs are UI only, content is handled by callback */
+}
+
+/* Date pickers inside filter bar — compact sizing */
+.lt-date-picker .DateInput_input {
+  font-family: 'Plus Jakarta Sans', Inter, sans-serif !important;
+  font-size: 11px !important;
+  padding: 6px 8px !important;
+  height: 34px !important;
+}
+.lt-date-picker .SingleDatePickerInput {
+  border-radius: 6px !important;
+  border: 1px solid #D1D5DB !important;
+}
+
+/* KPI container in lead tracker — override id specificity */
+#lt-kpi-container {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+/* Funnel bar hover tooltip */
+[title]:hover::after {
+  content: attr(title);
+  position: absolute;
+  background: var(--tvs-blue);
+  color: white;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 10px;
+  white-space: nowrap;
+  z-index: 999;
+  transform: translateY(-130%);
+  pointer-events: none;
+}
+
+/* ── PREVENT FLASH AND SMOOTH SWITCH TABS ────────────────────── */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.tab-pane {
+  animation: fadeInUp 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+/* ── MODAL DIALOG ZOOM TRANSITIONS ─────────────────────────────── */
+.modal.fade .modal-dialog {
+  transform: scale(0.95) !important;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+.modal.show .modal-dialog {
+  transform: scale(1) !important;
+}
+

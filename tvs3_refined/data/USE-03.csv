@@ -1,0 +1,6 @@
+policy_number,client_name,client_type,carrier_name,category,sub_category,premium_amount,claim_amount,commission_earned,policy_status,issue_date,expiry_date,region,distribution_channel,claim_status
+POL-USE-001,Amit Sharma,Individual/B2C,Tata Aig,Motor,4W,15000,12000,1500,Active,2026-06-01,2027-06-01,DL,Online,Registered
+POL-USE-002,Pooja Patel,Individual/B2C,Hdfc Ergo,Health,Individual,35000,8000,3500,Active,2026-05-15,2027-05-15,MH,Direct,Settled
+POL-USE-003,Rohan Verma,Corporate/B2B,Bajaj Allianz,Motor,CV,75000,15000,7500,Active,2026-06-10,2027-06-10,KA,Online,Approved
+POL-USE-004,Anjali Sharma,Individual/B2C,Tata Aig,Health,Group Medi,42000,0,4200,Active,2026-06-12,2027-06-12,DL,Online,No Claim
+POL-USE-005,Karan Malhotra,Individual/B2C,Hdfc Ergo,Travel,Flight,18000,3500,1800,Active,2026-06-14,2027-06-14,MH,Direct,Approved
