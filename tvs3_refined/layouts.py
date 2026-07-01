@@ -90,6 +90,13 @@ TAB_GROUPS = [
             {"label": "Data Source", "value": "tab-13"},
         ],
     },
+    {
+        "label": "AI Assistant",
+        "icon": "✧",
+        "tabs": [
+            {"label": "AI Chat", "value": "tab-15"},
+        ],
+    },
 ]
 
 
@@ -188,6 +195,10 @@ def serve_layout():
             ], id="btn-clear-upload", n_clicks=0, className="hdr-btn hdr-btn--outline"),
 
             html.Button([
+                "Download PDF",
+            ], id="btn-download-pdf", n_clicks=0, className="hdr-btn hdr-btn--outline"),
+
+            html.Button([
                 "Refresh",
             ], id="btn-refresh-data", n_clicks=0, className="hdr-btn hdr-btn--green"),
 
@@ -202,6 +213,8 @@ def serve_layout():
         dcc.Store(id='uploaded-filename-store'),
         dcc.Store(id='uploaded-schema-mapping-store'),
         dcc.Store(id='refresh-trigger'),
+        dcc.Store(id='chat-history-store', data=[]),
+        dcc.Download(id='download-report-pdf'),
 
         # Top Navigation spanning full width
         topbar,
@@ -211,11 +224,7 @@ def serve_layout():
             sidebar,
             html.Div([
                 html.Div([
-                    dcc.Loading(
-                        html.Div(id="tab-content", style={"display": "flex", "flexDirection": "column"}),
-                        type="circle",
-                        color=TVS_ORANGE,
-                    )
+                    html.Div(id="tab-content", style={"display": "flex", "flexDirection": "column"})
                 ], className="scroll-wrapper", style={"flex": 1, "minHeight": 0, "padding": "8px 12px"})
             ], className="main-content")
         ], style={"display": "flex", "flex": 1, "overflow": "hidden"}),
@@ -255,6 +264,8 @@ def serve_layout():
                 dbc.Button("Close", id="btn-close-ingestion-result", className="ms-auto", n_clicks=0, color="success")
             )
         ], id="ingestion-result-modal", is_open=False, size="lg"),
+
+
 
     ], id="page-content")
 

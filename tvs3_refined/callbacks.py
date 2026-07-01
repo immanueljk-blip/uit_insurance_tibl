@@ -8,7 +8,7 @@ import pandas as pd
 import io
 import base64
 from charts import (tab1, tab2, tab2b, tab3, tab3b, tab4b, tab5, tab5b,
-                    tab6, tab6b, build_tab6b_content, tab7, tab8, tab9, tab10, tab11, tab12, tab13, tab14,
+                    tab6, tab6b, build_tab6b_content, tab7, tab8, tab9, tab10, tab11, tab12, tab13, tab14, tab15, build_chat_bubbles, build_report_panel,
                     _cfg, _ax, chart_box, kpi_card, format_currency, section_title,
                     build_lead_pivot, build_nonconversion_table, build_followup_table,
                     _lt_kpi_bar, _lt_kpi_and_funnel_panel, _map_stages, STAGE_ORDER)
@@ -17,6 +17,9 @@ from dash import dash_table
 import traceback
 import json
 from layouts import TAB_GROUPS
+import report_helper
+from datetime import datetime as dt_datetime
+
 
 TVS_BLUE   = "#1B3B8B"
 TVS_ORANGE = "#E55B13"
@@ -91,6 +94,8 @@ def get_current_df(stored_data):
         if 'expiry_date' in df.columns:
             df['expiry_date'] = pd.to_datetime(df['expiry_date'], errors='coerce')
         return df
+    # Use the in-memory global — fast for tab renders.
+    # db.df_global is reloaded via db.force_refresh() after every commit.
     return db.df_global.copy()
 
 
@@ -203,74 +208,142 @@ def validate_dataframe(df):
     valid_policy_statuses = {'active', 'cancelled', 'expired', 'renewed', 'docs and inspection pending', 'caselogin', 'soft copy received', 'policy issued', 'booked', 'lead', 'lapse', 'lost', 'reject'}
     valid_claim_statuses = {'registered', 'survey completed', 'approved', 'settled', 'rejected', 'under review', 'no claim'}
     
-    for idx, row in mapped_df.iterrows():
-        row_num = idx + 1
-        
-        # Helper to safely log cell error using original column name
-        def add_cell_error(field):
-            orig_col = orig_col_map.get(field.lower().strip(), field)
-            cell_errors.append({"row_idx": idx, "col": orig_col})
-        
-        # 1. Null / Empty checks
-        for field in ['policy_number', 'client_name', 'category', 'sub_category', 'region']:
-            val = row[field]
-            if pd.isna(val) or str(val).strip() == "":
-                errors.append(f"Row {row_num}: Column '{field}' is required and cannot be empty.")
-                add_cell_error(field)
+    # 1. Null / Empty checks
+    for field in ['policy_number', 'client_name', 'category', 'sub_category', 'region']:
+        bad_mask = mapped_df[field].isna() | (mapped_df[field].astype(str).str.strip() == "")
+        if bad_mask.any():
+            bad_indices = bad_mask[bad_mask].index
+            for idx in bad_indices[:100]:
+                errors.append(f"Row {idx+1}: Column '{field}' is required and cannot be empty.")
+                cell_errors.append({"row_idx": int(idx), "col": orig_col_map.get(field.lower(), field)})
+            if len(bad_indices) > 100:
+                errors.append(f"... and {len(bad_indices) - 100} more empty errors for '{field}'")
+                for idx in bad_indices[100:]:
+                    cell_errors.append({"row_idx": int(idx), "col": orig_col_map.get(field.lower(), field)})
+                    
+    # 2. Client Type Check
+    c_type_series = mapped_df['client_type'].astype(str).str.strip().str.lower()
+    bad_mask = ~c_type_series.isin(valid_client_types) | mapped_df['client_type'].isna()
+    if bad_mask.any():
+        bad_indices = bad_mask[bad_mask].index
+        for idx in bad_indices[:100]:
+            val = mapped_df.loc[idx, 'client_type']
+            errors.append(f"Row {idx+1}: Invalid Client Type '{val}'. Expected 'Individual/B2C' or 'Corporate/B2B'.")
+            cell_errors.append({"row_idx": int(idx), "col": orig_col_map.get('client_type', 'client_type')})
+        if len(bad_indices) > 100:
+            errors.append(f"... and {len(bad_indices) - 100} more invalid client_type errors")
+            for idx in bad_indices[100:]:
+                cell_errors.append({"row_idx": int(idx), "col": orig_col_map.get('client_type', 'client_type')})
                 
-        # 2. Client Type Check
-        c_type = str(row['client_type']).strip().lower()
-        if pd.isna(row['client_type']) or c_type not in valid_client_types:
-            errors.append(f"Row {row_num}: Invalid Client Type '{row['client_type']}'. Expected 'Individual/B2C' or 'Corporate/B2B'.")
-            add_cell_error('client_type')
-            
-        # 3. Category Check
-        cat = str(row['category']).strip().lower()
-        if pd.isna(row['category']) or cat not in valid_categories:
-            errors.append(f"Row {row_num}: Invalid Category '{row['category']}'. Expected Motor, Health, Home, Travel, or Other.")
-            add_cell_error('category')
-            
-        # 4. Numerics Checks
-        for field in ['premium_amount', 'claim_amount', 'commission_earned']:
-            val = row[field]
-            try:
-                num = float(val)
-                if num < 0:
-                    errors.append(f"Row {row_num}: Numeric field '{field}' cannot be negative (found {val}).")
-                    add_cell_error(field)
-            except (ValueError, TypeError):
-                errors.append(f"Row {row_num}: Field '{field}' must be a valid number (found '{val}').")
-                add_cell_error(field)
+    # 3. Category Check
+    cat_series = mapped_df['category'].astype(str).str.strip().str.lower()
+    bad_mask = ~cat_series.isin(valid_categories) | mapped_df['category'].isna()
+    if bad_mask.any():
+        bad_indices = bad_mask[bad_mask].index
+        for idx in bad_indices[:100]:
+            val = mapped_df.loc[idx, 'category']
+            errors.append(f"Row {idx+1}: Invalid Category '{val}'. Expected Motor, Health, Home, Travel, or Other.")
+            cell_errors.append({"row_idx": int(idx), "col": orig_col_map.get('category', 'category')})
+        if len(bad_indices) > 100:
+            errors.append(f"... and {len(bad_indices) - 100} more invalid category errors")
+            for idx in bad_indices[100:]:
+                cell_errors.append({"row_idx": int(idx), "col": orig_col_map.get('category', 'category')})
                 
-        # 5. Date Parsing and sequence check
-        issue_date_parsed = pd.to_datetime(row['issue_date'], errors='coerce')
-        expiry_date_parsed = pd.to_datetime(row['expiry_date'], errors='coerce')
-        
-        if pd.isna(issue_date_parsed):
-            errors.append(f"Row {row_num}: 'issue_date' has an invalid date format (found '{row['issue_date']}').")
-            add_cell_error('issue_date')
-        if pd.isna(expiry_date_parsed):
-            errors.append(f"Row {row_num}: 'expiry_date' has an invalid date format (found '{row['expiry_date']}').")
-            add_cell_error('expiry_date')
-            
-        if not pd.isna(issue_date_parsed) and not pd.isna(expiry_date_parsed):
-            if expiry_date_parsed < issue_date_parsed:
-                errors.append(f"Row {row_num}: 'expiry_date' ({row['expiry_date']}) cannot be earlier than 'issue_date' ({row['issue_date']}).")
-                add_cell_error('issue_date')
-                add_cell_error('expiry_date')
+    # 4. Numerics Checks
+    for field in ['premium_amount', 'claim_amount', 'commission_earned']:
+        converted = pd.to_numeric(mapped_df[field], errors='coerce')
+        bad_mask = converted.isna() | (converted < 0)
+        if bad_mask.any():
+            bad_indices = bad_mask[bad_mask].index
+            for idx in bad_indices[:100]:
+                val = mapped_df.loc[idx, field]
+                if pd.isna(val) or (isinstance(val, str) and not val.strip()):
+                    errors.append(f"Row {idx+1}: Field '{field}' must be a valid number (found empty).")
+                elif converted.isna().loc[idx]:
+                    errors.append(f"Row {idx+1}: Field '{field}' must be a valid number (found '{val}').")
+                else:
+                    errors.append(f"Row {idx+1}: Numeric field '{field}' cannot be negative (found {val}).")
+                cell_errors.append({"row_idx": int(idx), "col": orig_col_map.get(field.lower(), field)})
+            if len(bad_indices) > 100:
+                errors.append(f"... and {len(bad_indices) - 100} more numeric errors for '{field}'")
+                for idx in bad_indices[100:]:
+                    cell_errors.append({"row_idx": int(idx), "col": orig_col_map.get(field.lower(), field)})
+                    
+    # 5. Date Parsing and sequence check
+    issue_dates = pd.to_datetime(mapped_df['issue_date'], errors='coerce')
+    expiry_dates = pd.to_datetime(mapped_df['expiry_date'], errors='coerce')
+    
+    # Issue date invalid
+    bad_issue_mask = issue_dates.isna() & mapped_df['issue_date'].notna()
+    if bad_issue_mask.any():
+        bad_indices = bad_issue_mask[bad_issue_mask].index
+        for idx in bad_indices[:100]:
+            val = mapped_df.loc[idx, 'issue_date']
+            errors.append(f"Row {idx+1}: 'issue_date' has an invalid date format (found '{val}').")
+            cell_errors.append({"row_idx": int(idx), "col": orig_col_map.get('issue_date', 'issue_date')})
+        if len(bad_indices) > 100:
+            errors.append(f"... and {len(bad_indices) - 100} more issue_date format errors")
+            for idx in bad_indices[100:]:
+                cell_errors.append({"row_idx": int(idx), "col": orig_col_map.get('issue_date', 'issue_date')})
                 
-        # 6. Policy Status Check
-        p_status = str(row['policy_status']).strip().lower()
-        if pd.isna(row['policy_status']) or p_status not in valid_policy_statuses:
-            errors.append(f"Row {row_num}: Invalid Policy Status '{row['policy_status']}'.")
-            add_cell_error('policy_status')
-            
-        # 7. Claim Status Check
-        if 'claim_status' in mapped_df.columns:
-            cl_status = str(row['claim_status']).strip().lower()
-            if pd.notna(row['claim_status']) and cl_status not in valid_claim_statuses:
-                errors.append(f"Row {row_num}: Invalid Claim Status '{row['claim_status']}'.")
-                add_cell_error('claim_status')
+    # Expiry date invalid
+    bad_expiry_mask = expiry_dates.isna() & mapped_df['expiry_date'].notna()
+    if bad_expiry_mask.any():
+        bad_indices = bad_expiry_mask[bad_expiry_mask].index
+        for idx in bad_indices[:100]:
+            val = mapped_df.loc[idx, 'expiry_date']
+            errors.append(f"Row {idx+1}: 'expiry_date' has an invalid date format (found '{val}').")
+            cell_errors.append({"row_idx": int(idx), "col": orig_col_map.get('expiry_date', 'expiry_date')})
+        if len(bad_indices) > 100:
+            errors.append(f"... and {len(bad_indices) - 100} more expiry_date format errors")
+            for idx in bad_indices[100:]:
+                cell_errors.append({"row_idx": int(idx), "col": orig_col_map.get('expiry_date', 'expiry_date')})
+                
+    # Expiry earlier than Issue
+    both_valid_mask = issue_dates.notna() & expiry_dates.notna()
+    earlier_mask = both_valid_mask & (expiry_dates < issue_dates)
+    if earlier_mask.any():
+        bad_indices = earlier_mask[earlier_mask].index
+        for idx in bad_indices[:100]:
+            val_issue = mapped_df.loc[idx, 'issue_date']
+            val_expiry = mapped_df.loc[idx, 'expiry_date']
+            errors.append(f"Row {idx+1}: 'expiry_date' ({val_expiry}) cannot be earlier than 'issue_date' ({val_issue}).")
+            cell_errors.append({"row_idx": int(idx), "col": orig_col_map.get('issue_date', 'issue_date')})
+            cell_errors.append({"row_idx": int(idx), "col": orig_col_map.get('expiry_date', 'expiry_date')})
+        if len(bad_indices) > 100:
+            errors.append(f"... and {len(bad_indices) - 100} more date sequence errors")
+            for idx in bad_indices[100:]:
+                cell_errors.append({"row_idx": int(idx), "col": orig_col_map.get('issue_date', 'issue_date')})
+                cell_errors.append({"row_idx": int(idx), "col": orig_col_map.get('expiry_date', 'expiry_date')})
+                
+    # 6. Policy Status Check
+    p_status_series = mapped_df['policy_status'].astype(str).str.strip().str.lower()
+    bad_mask = ~p_status_series.isin(valid_policy_statuses) | mapped_df['policy_status'].isna()
+    if bad_mask.any():
+        bad_indices = bad_mask[bad_mask].index
+        for idx in bad_indices[:100]:
+            val = mapped_df.loc[idx, 'policy_status']
+            errors.append(f"Row {idx+1}: Invalid Policy Status '{val}'.")
+            cell_errors.append({"row_idx": int(idx), "col": orig_col_map.get('policy_status', 'policy_status')})
+        if len(bad_indices) > 100:
+            errors.append(f"... and {len(bad_indices) - 100} more invalid policy_status errors")
+            for idx in bad_indices[100:]:
+                cell_errors.append({"row_idx": int(idx), "col": orig_col_map.get('policy_status', 'policy_status')})
+                
+    # 7. Claim Status Check
+    if 'claim_status' in mapped_df.columns:
+        cl_status_series = mapped_df['claim_status'].astype(str).str.strip().str.lower()
+        bad_mask = ~cl_status_series.isin(valid_claim_statuses) & mapped_df['claim_status'].notna()
+        if bad_mask.any():
+            bad_indices = bad_mask[bad_mask].index
+            for idx in bad_indices[:100]:
+                val = mapped_df.loc[idx, 'claim_status']
+                errors.append(f"Row {idx+1}: Invalid Claim Status '{val}'.")
+                cell_errors.append({"row_idx": int(idx), "col": orig_col_map.get('claim_status', 'claim_status')})
+            if len(bad_indices) > 100:
+                errors.append(f"... and {len(bad_indices) - 100} more invalid claim_status errors")
+                for idx in bad_indices[100:]:
+                    cell_errors.append({"row_idx": int(idx), "col": orig_col_map.get('claim_status', 'claim_status')})
 
     return None, errors, cell_errors
 
@@ -638,7 +711,7 @@ def render_tab(tab, stored_data, refresh_data, filename, raw_data, mapping_store
             "tab-4b": tab4b, "tab-5": tab5, "tab-5b": tab5b,
             "tab-6": tab6, "tab-6b": tab6b, "tab-7": tab7, "tab-8": tab8,
             "tab-9": tab9, "tab-10": tab10, "tab-11": tab11, "tab-12": tab12,
-            "tab-13": tab13, "tab-14": tab14,
+            "tab-13": tab13, "tab-14": tab14, "tab-15": tab15,
         }
         fn = tab_map.get(tab)
         if fn:
@@ -864,7 +937,7 @@ def update_dynamic_pivot(row, col, metric, agg, stored_data, refresh_data):
 )
 def refresh_data(n_clicks):
     if n_clicks and n_clicks > 0:
-        db.df_global = db.get_data()
+        db.force_refresh()
         return n_clicks
     return dash.no_update
 
@@ -1154,8 +1227,8 @@ def verify_and_commit_data(n_clicks, mapped_data, filename):
         except Exception as log_err:
             print(f"[audit] Error writing audit ingestion log: {log_err}")
         
-        # 2. Force reload memory master data
-        db.df_global = db.get_data()
+        # 2. Force reload memory master data (busts the TTL cache immediately)
+        db.force_refresh()
         
         # 3. Save full backup of the entire live dataset to revisions/
         os.makedirs('revisions', exist_ok=True)
@@ -1732,3 +1805,201 @@ def update_tab6b_content(stored_data, refresh_data):
         return html.Div("No data available.", style={"padding": "20px", "color": "#6B7280"})
     
     return build_tab6b_content(dff, "all", dff)
+
+
+# ── Gemini AI Chat Assistant Callbacks ────────────────────────────────────────
+
+import chat_helper
+import threading
+import uuid
+
+# Global progress store
+chat_progress = {}
+
+def run_chat_background(user_query, session_id):
+    try:
+        # Step 1: SQL Generation
+        chat_progress[session_id] = {"status": "Generating SQL query...", "complete": False, "result": None}
+        sql = chat_helper.generate_sql(user_query)
+        if not sql:
+            chat_progress[session_id] = {
+                "status": "Done",
+                "complete": True,
+                "result": {
+                    "success": False,
+                    "error": "I couldn't generate a valid, safe SQL query for that question. Please try rephrasing it.",
+                    "sql": None,
+                    "data": None,
+                    "answer": None
+                }
+            }
+            return
+            
+        # Step 2: Executing database query
+        chat_progress[session_id] = {"status": "Querying local database...", "complete": False, "result": None}
+        df, err = chat_helper.execute_sql(sql)
+        if err:
+            chat_progress[session_id] = {
+                "status": "Done",
+                "complete": True,
+                "result": {
+                    "success": False,
+                    "error": f"Database execution failed: {err}",
+                    "sql": sql,
+                    "data": None,
+                    "answer": None
+                }
+            }
+            return
+            
+        # Step 3: Summarizing results
+        chat_progress[session_id] = {"status": f"Summarizing {len(df)} records...", "complete": False, "result": None}
+        answer = chat_helper.generate_summary(user_query, sql, df)
+        
+        # Done
+        chat_progress[session_id] = {
+            "status": "Done",
+            "complete": True,
+            "result": {
+                "success": True,
+                "error": None,
+                "sql": sql,
+                "data": df.to_dict('records') if df is not None else None,
+                "answer": answer
+            }
+        }
+    except Exception as e:
+        chat_progress[session_id] = {
+            "status": "Done",
+            "complete": True,
+            "result": {
+                "success": False,
+                "error": f"Unexpected error occurred: {str(e)}",
+                "sql": None,
+                "data": None,
+                "answer": None
+            }
+        }
+
+
+@app.callback(
+    Output("chat-history-container", "children"),
+    Input("chat-history-store", "data")
+)
+def update_chat_ui(history):
+    if history is None:
+        history = []
+    return build_chat_bubbles(history)
+
+
+@app.callback(
+    [Output("chat-history-store", "data"),
+     Output("chat-user-input", "value", allow_duplicate=True),
+     Output("chat-session-id", "data"),
+     Output("chat-status-interval", "disabled"),
+     Output("chat-status-interval", "n_intervals")],
+    [Input("btn-send-chat", "n_clicks"),
+     Input("btn-clear-chat", "n_clicks"),
+     Input({"type": "chat-suggestion", "index": ALL}, "n_clicks")],
+    [State("chat-user-input", "value"),
+     State("chat-history-store", "data")],
+    prevent_initial_call=True
+)
+def handle_chat_actions(send_clicks, clear_clicks, suggestion_clicks, user_input, history):
+    triggered = ctx.triggered_id
+    if history is None:
+        history = []
+        
+    if triggered == "btn-clear-chat":
+        return [], "", None, True, 0
+        
+    user_msg = None
+    
+    if triggered == "btn-send-chat":
+        if user_input and user_input.strip():
+            user_msg = user_input.strip()
+            
+    elif isinstance(triggered, dict) and triggered.get("type") == "chat-suggestion":
+        idx = triggered.get("index")
+        suggestions = [
+            "What is our total written premium?",
+            "Show me the top 3 clients by premium",
+            "Which region has the highest claim amount?",
+            "List our active product categories and carriers",
+            "What is our overall loss ratio?"
+        ]
+        if idx is not None and 0 <= idx < len(suggestions):
+            if suggestion_clicks and idx < len(suggestion_clicks) and suggestion_clicks[idx]:
+                user_msg = suggestions[idx]
+
+    if user_msg:
+        history.append({"sender": "user", "text": user_msg})
+        history.append({"sender": "ai", "text": "Connecting to Gemini...", "is_placeholder": True})
+        
+        session_id = str(uuid.uuid4())
+        chat_progress[session_id] = {"status": "Initializing AI engine...", "complete": False, "result": None}
+        
+        t = threading.Thread(target=run_chat_background, args=(user_msg, session_id))
+        t.daemon = True
+        t.start()
+        
+        return history, "", session_id, False, 0
+        
+    raise dash.exceptions.PreventUpdate
+
+
+@app.callback(
+    [Output("chat-history-store", "data", allow_duplicate=True),
+     Output("chat-status-interval", "disabled", allow_duplicate=True)],
+    Input("chat-status-interval", "n_intervals"),
+    [State("chat-session-id", "data"),
+     State("chat-history-store", "data")],
+    prevent_initial_call=True
+)
+def poll_chat_status(n_intervals, session_id, history):
+    if not session_id or not history:
+        raise dash.exceptions.PreventUpdate
+        
+    progress = chat_progress.get(session_id)
+    if not progress:
+        raise dash.exceptions.PreventUpdate
+        
+    if history and history[-1].get("sender") == "ai" and history[-1].get("is_placeholder"):
+        if not progress["complete"]:
+            history[-1]["text"] = progress["status"]
+            return history, False
+        else:
+            res = progress["result"]
+            if res.get("success"):
+                history[-1] = {
+                    "sender": "ai",
+                    "text": res.get("answer"),
+                    "sql": res.get("sql"),
+                    "data": res.get("data")
+                }
+            else:
+                history[-1] = {
+                    "sender": "ai",
+                    "text": f"⚠️ Error: {res.get('error')}",
+                    "sql": res.get("sql")
+                }
+            chat_progress.pop(session_id, None)
+            return history, True
+            
+    raise dash.exceptions.PreventUpdate
+
+
+@app.callback(
+    Output("download-report-pdf", "data"),
+    Input("btn-download-pdf", "n_clicks"),
+    [State("chat-history-store", "data"),
+     State("uploaded-data-store", "data"),
+     State("pdf-executive-notes", "value")],
+    prevent_initial_call=True
+)
+def download_pdf_report(n_clicks, history, uploaded_data, exec_notes):
+    if not n_clicks:
+        raise dash.exceptions.PreventUpdate
+    df = get_current_df(uploaded_data)
+    pdf_bytes = report_helper.generate_session_pdf(history or [], df, exec_notes=exec_notes)
+    return dcc.send_bytes(pdf_bytes, filename=f"tvs_ai_report_{dt_datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf")

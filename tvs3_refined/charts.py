@@ -37,12 +37,12 @@ def _cfg():
 
 def _ax(fig, tickangle=0):
     fig.update_xaxes(showgrid=False, zeroline=False,
-                     title_font=dict(size=10, color="#6B7280"),
-                     tickfont=dict(size=9, color="#6B7280"),
+                     title_font=dict(size=10, color="#374151"),
+                     tickfont=dict(size=9.5, color="#374151"),
                      tickangle=tickangle, automargin=True)
     fig.update_yaxes(showgrid=True, gridcolor="#E5E7EB", zeroline=False,
-                     title_font=dict(size=10, color="#6B7280"),
-                     tickfont=dict(size=9, color="#6B7280"), automargin=True)
+                     title_font=dict(size=10, color="#374151"),
+                     tickfont=dict(size=9.5, color="#374151"), automargin=True)
     fig.update_layout(legend=dict(
         orientation="h", 
         yanchor="bottom", 
@@ -97,7 +97,7 @@ def kpi_card(title, value, subtitle=None, subtitle_color=GREEN, accent=TVS_ORANG
     }
     if id is not None:
         kwargs["id"] = id
-        kwargs["n_clicks"] = 0
+        kwargs["n_clicks"] = 0  # type: ignore
         style["cursor"] = "pointer"
         
     return html.Div(children, **kwargs)
@@ -139,7 +139,7 @@ def chart_box(fig, gid=None, flex="1", min_width="0"):
         title_text = fig.layout.title.text
         fig.layout.title.text = ""
 
-    children = []
+    children: list = []
     if title_text:
         children.append(html.Div(title_text, className="chart-title"))
 
@@ -203,10 +203,20 @@ def tab1(df):
         expired    = status_counts.get('Expired', 0)
         cancelled  = status_counts.get('Cancelled', 0)
         active     = status_counts.get('Active', 0)
+        
+        today = pd.Timestamp.now().normalize()
+        eligible_expired = 0
+        if 'expiry_date' in df.columns:
+            expired_df = df[df['policy_status'] == 'Expired']
+            if not expired_df.empty:
+                exp_dates = pd.to_datetime(expired_df['expiry_date'], errors='coerce')
+                eligible_expired = ((exp_dates >= (today - pd.Timedelta(days=30))) & (exp_dates <= today)).sum()
+                
+        true_expired_churn = max(0, expired - eligible_expired)
         denom      = renewed + expired + cancelled
         ret_rate   = (renewed / denom * 100) if denom > 0 else 0
         ret_color  = GREEN if ret_rate >= 40 else (AMBER if ret_rate >= 25 else RED)
-        churn_rate = ((cancelled + expired) / denom * 100) if denom > 0 else 0
+        churn_rate = ((cancelled + true_expired_churn) / denom * 100) if denom > 0 else 0
         active_prem = df[df['policy_status'] == 'Active'][premium_col].sum() if premium_col else 0
     else:
         ret_rate = 0; churn_rate = 0; active_prem = 0; ret_color = GREEN
@@ -217,7 +227,7 @@ def tab1(df):
     if 'issue_date' in df.columns:
         trend_df = df.dropna(subset=['issue_date']).copy()
         if not trend_df.empty:
-            trend_df['month'] = trend_df['issue_date'].dt.to_period('M').astype(str)
+            trend_df['month'] = trend_df['issue_date'].dt.to_period('M').astype(str)  # type: ignore
             trend_grp = trend_df.groupby('month')[[premium_col, claim_col, comm_col]].sum().reset_index()
             trend_grp = trend_grp.sort_values('month')
             
@@ -254,7 +264,7 @@ def tab1(df):
     # ── Monthly New Business vs Renewals Stacked Bar ──
     if 'issue_date' in df.columns and premium_col:
         df2 = df.copy()
-        df2['issue_month'] = pd.to_datetime(df2['issue_date']).dt.to_period('M').astype(str)
+        df2['issue_month'] = pd.to_datetime(df2['issue_date']).dt.to_period('M').astype(str)  # type: ignore
         df2['biz_type'] = df2['policy_status'].apply(
             lambda s: 'Renewal' if s == 'Renewed' else 'New Business'
         ) if 'policy_status' in df2.columns else 'New Business'
@@ -274,7 +284,7 @@ def tab1(df):
             **_cfg(), legend_title="Business Type",
             xaxis_title="Month", yaxis_title="Premium (₹)",
             xaxis=dict(tickvals=tick_vals, tickangle=-35,
-                       tickfont=dict(size=11, color="#6B7280")),
+                       tickfont=dict(size=11, color="#374151")),
             legend=dict(orientation="h", yanchor="top", y=-0.22, xanchor="center", x=0.5)
         ))
     else:
@@ -309,10 +319,20 @@ def tab2(df):
         expired    = status_counts.get('Expired', 0)
         cancelled  = status_counts.get('Cancelled', 0)
         active     = status_counts.get('Active', 0)
+        
+        today = pd.Timestamp.now().normalize()
+        eligible_expired = 0
+        if 'expiry_date' in df.columns:
+            expired_df = df[df['policy_status'] == 'Expired']
+            if not expired_df.empty:
+                exp_dates = pd.to_datetime(expired_df['expiry_date'], errors='coerce')
+                eligible_expired = ((exp_dates >= (today - pd.Timedelta(days=30))) & (exp_dates <= today)).sum()
+                
+        true_expired_churn = max(0, expired - eligible_expired)
         denom      = renewed + expired + cancelled
         ret_rate   = (renewed / denom * 100) if denom > 0 else 0
         ret_color  = GREEN if ret_rate >= 40 else (AMBER if ret_rate >= 25 else RED)
-        churn_rate = ((cancelled + expired) / denom * 100) if denom > 0 else 0
+        churn_rate = ((cancelled + true_expired_churn) / denom * 100) if denom > 0 else 0
         active_prem = df[df['policy_status'] == 'Active'][premium_col].sum() if premium_col else 0
     else:
         ret_rate = 0; churn_rate = 0; active_prem = 0; ret_color = GREEN
@@ -321,7 +341,7 @@ def tab2(df):
     # ── Premium Growth Trajectory Line ──
     if 'issue_date' in df.columns and premium_col:
         df3 = df.copy()
-        df3['issue_month'] = pd.to_datetime(df3['issue_date']).dt.to_period('M').astype(str)
+        df3['issue_month'] = pd.to_datetime(df3['issue_date']).dt.to_period('M').astype(str)  # type: ignore
         growth_df = df3.groupby('issue_month')[premium_col].sum().reset_index().sort_values('issue_month')
         growth_df['cumulative'] = growth_df[premium_col].cumsum()
         all_months_g = sorted(growth_df['issue_month'].unique())
@@ -335,7 +355,7 @@ def tab2(df):
         _ax(fig_growth.update_layout(
             **_cfg(), yaxis_title="Cumulative Premium (₹)",
             xaxis=dict(tickvals=tick_vals_g, tickangle=-35,
-                       tickfont=dict(size=11, color="#6B7280"))
+                       tickfont=dict(size=11, color="#374151"))
         ))
     else:
         fig_growth = px.line(title="Time Series Data N/A")
@@ -517,6 +537,10 @@ def tab3b(df):
     total_claim = df[claim_col].sum() if claim_col else 0
     total_prem  = df[premium_col].sum() if premium_col else 0
     loss_ratio  = (total_claim / total_prem * 100) if total_prem > 0 else 0
+    total_claims_count = df[df[claim_col] > 0].shape[0] if claim_col else 0
+    avg_claim = (total_claim / total_claims_count) if total_claims_count > 0 else 0
+    settled_claims = len(df[(df[claim_col] > 0) & (df['claim_status'] == 'Settled')]) if (claim_col and 'claim_status' in df.columns) else 0
+    settlement_rate = (settled_claims / total_claims_count * 100) if total_claims_count > 0 else 0
 
     # ── Claims by Category Bar (Value) ──
     if 'category' in df.columns and claim_col:
@@ -564,8 +588,8 @@ def tab3b(df):
     return tab_layout(
         kpi_row(
             kpi_card("Total Claims",  format_currency(total_claim), f"{open_cnt} unresolved", RED,        accent=RED),
-            kpi_card("Total Premium", format_currency(total_prem),  "Earned premium",          GREEN,      accent=GREEN),
-            kpi_card("Global ICR",    f"{loss_ratio:.1f}%",         "Overall Ratio",           TVS_ORANGE, accent=TVS_ORANGE),
+            kpi_card("Avg Claim Size", format_currency(avg_claim),   "Across all filed claims", GREEN,      accent=GREEN),
+            kpi_card("Settlement Rate", f"{settlement_rate:.1f}%",   "Settled vs total filed",  TVS_ORANGE, accent=TVS_ORANGE),
         ),
         hrow(
             chart_box(fig_vs,  "carrier-vs-chart", flex="3"),
@@ -590,6 +614,23 @@ def tab4(df):
     loss_ratio  = (total_claim / total_prem * 100) if total_prem > 0 else 0
     icr_color = RED if loss_ratio > 85 else (AMBER if loss_ratio > 65 else GREEN)
 
+    high_risk_carrier = "N/A"
+    high_risk_icr = 0.0
+    if 'carrier_name' in df.columns and claim_col and premium_col:
+        try:
+            cg = df.groupby('carrier_name').agg(P=(premium_col, 'sum'), C=(claim_col, 'sum')).reset_index()
+            cg['icr'] = np.where(cg['P'] > 0, cg['C'] / cg['P'] * 100, 0)
+            if not cg.empty:
+                max_row = cg.loc[cg['icr'].idxmax()]
+                high_risk_carrier = max_row['carrier_name']
+                high_risk_icr = max_row['icr']
+        except Exception:
+            pass
+
+    avg_exposure = (total_claim / len(df)) if len(df) > 0 else 0
+    open_statuses = ['Registered', 'Survey Completed']
+    pending_claims_val = df[df['claim_status'].isin(open_statuses)][claim_col].sum() if (claim_col and 'claim_status' in df.columns) else 0
+
     fig_gauge = go.Figure(go.Indicator(
         mode = "gauge+number", value = loss_ratio, title={'text':"Overall ICR"},
         number = {'suffix': "%"},
@@ -613,9 +654,9 @@ def tab4(df):
 
     return tab_layout(
         kpi_row(
-            kpi_card("ICR",            f"{loss_ratio:.1f}%",          "Incurred Claims Ratio", icr_color, accent=icr_color),
-            kpi_card("Total Exposure", format_currency(total_claim),  "Across portfolio",      RED),
-            kpi_card("Total Premium",  format_currency(total_prem),   "Across portfolio",      GREEN),
+            kpi_card("High-Risk Carrier", f"{high_risk_carrier} ({high_risk_icr:.1f}%)", "Carrier with highest ICR", icr_color, accent=icr_color),
+            kpi_card("Avg Risk Exposure", format_currency(avg_exposure),  "Avg claims per policy",      RED),
+            kpi_card("Pending Claims Value", format_currency(pending_claims_val), "Unresolved claims exposure",      GREEN),
         ),
         hrow(
             chart_box(fig_gauge, "icr-gauge", flex="1"),
@@ -707,9 +748,12 @@ def tab5(df):
             Premium=(premium_col, 'sum'), Claims=(claim_col, 'sum'), Commission=(comm_col, 'sum')
         ).reset_index()
         seg_melted = seg.melt(id_vars='client_type', value_vars=['Premium', 'Claims', 'Commission'], var_name='Metric', value_name='Value')
+        seg_melted['Label'] = seg_melted['Value'].apply(format_currency)
         fig_seg = px.bar(seg_melted, x='Metric', y='Value', color='client_type', barmode='group', title="B2B vs B2C Breakdown",
-                         color_discrete_map={'Individual/B2C': TVS_BLUE, 'Corporate/B2B': TVS_ORANGE}, text_auto='.2s')
-        _ax(fig_seg.update_layout(**_cfg(), legend_title="Segment"))
+                         color_discrete_map={'Individual/B2C': TVS_BLUE, 'Corporate/B2B': TVS_ORANGE},
+                         text='Label')
+        fig_seg.update_traces(textposition='outside', cliponaxis=False)
+        _ax(fig_seg.update_layout(**_cfg(), legend_title="Segment", yaxis=dict(title='Value (₹)')))
     else: fig_seg = px.bar(title="Segment Data N/A")
 
     # Policy duration removed by request
@@ -721,11 +765,12 @@ def tab5(df):
     if 'client_type' in df.columns and premium_col:
         b2b = df[df['client_type'].str.contains('B2B|Corporate', case=False, na=False)][premium_col].sum()
         b2b_pct = (b2b / prem5 * 100) if prem5 > 0 else 0
+    avg_prem = (prem5 / len(df)) if len(df) > 0 else 0
     return tab_layout(
         kpi_row(
             kpi_card("Categories",     str(n_cats),                 "Product categories",        TVS_ORANGE, accent=TVS_ORANGE),
             kpi_card("Sub-Categories", str(n_sub_cat5),             "Sub-product lines",         PURPLE,     accent=PURPLE),
-            kpi_card("Total Premium",  format_currency(prem5),      "Across all products",       GREEN,      accent=GREEN),
+            kpi_card("Avg Policy Premium", format_currency(avg_prem), "Avg premium per policy",    GREEN,      accent=GREEN),
             kpi_card("B2B Share",      f"{b2b_pct:.1f}%",          "Corporate premium mix",      TVS_BLUE,   accent=TVS_BLUE),
         ),
         hrow(chart_box(fig_seg, "seg-chart"))
@@ -833,11 +878,18 @@ def tab5b(df):
         cs_check = df.groupby('carrier_name').agg(P=(premium_col,'sum'), C=(claim_col,'sum')).reset_index()
         cs_check['icr'] = cs_check['C'] / cs_check['P'].replace(0, float('nan')) * 100
         high_icr_count = int((cs_check['icr'] > 65).sum())
+    carrier_concentration = 0.0
+    if 'carrier_name' in df.columns and premium_col and total_carr_prem > 0:
+        try:
+            top_carrier_prem = df.groupby('carrier_name')[premium_col].sum().max()
+            carrier_concentration = (top_carrier_prem / total_carr_prem * 100)
+        except Exception:
+            pass
     return tab_layout(
         kpi_row(
             kpi_card("Active Carriers",   str(n_carriers),              "In portfolio",          TVS_BLUE,   accent=TVS_BLUE),
             kpi_card("Top Carrier",        top_carrier,                  "By written premium",    PURPLE,     accent=PURPLE),
-            kpi_card("Total Premium",      format_currency(total_carr_prem), "Written premium",   GREEN,      accent=GREEN),
+            kpi_card("Carrier Concentration", f"{carrier_concentration:.1f}%", "Top carrier share", GREEN,      accent=GREEN),
             kpi_card("High ICR Carriers",  str(high_icr_count),          "ICR > 65% — review",   RED,        accent=RED),
         ),
         hrow(content_box([
@@ -857,7 +909,9 @@ def tab6(df):
 
     if 'sub_category' in df.columns and 'category' in df.columns and premium_col:
         g = df.groupby(['category', 'sub_category'])[premium_col].sum().reset_index().sort_values(premium_col, ascending=False)
-        fig_sub = px.bar(g, x='sub_category', y=premium_col, color='category', title="Premium by Sub-Category")
+        g['Label'] = g[premium_col].apply(format_currency)
+        fig_sub = px.bar(g, x='sub_category', y=premium_col, color='category', title="Premium by Sub-Category", text='Label')
+        fig_sub.update_traces(textposition='outside', cliponaxis=False)
         _ax(fig_sub.update_layout(**_cfg()), tickangle=-40)
     else: fig_sub = px.bar(title="Subcategory Data N/A")
 
@@ -877,12 +931,20 @@ def tab6(df):
         top_client = "N/A"
     n_sub_cats = df['sub_category'].nunique() if 'sub_category' in df.columns else 0
     total_cli_prem = df[premium_col].sum() if premium_col else 0
+    avg_client_prem = (total_cli_prem / n_clients) if n_clients > 0 else 0
+    client_concentration = 0.0
+    if 'client_name' in df.columns and premium_col and total_cli_prem > 0:
+        try:
+            top_client_prem = df.groupby('client_name')[premium_col].sum().max()
+            client_concentration = (top_client_prem / total_cli_prem * 100)
+        except Exception:
+            pass
     return tab_layout(
         kpi_row(
             kpi_card("Total Clients",   str(n_clients),                "Unique accounts",        TVS_BLUE,   accent=TVS_BLUE),
             kpi_card("Top Client",      top_client,                    "By premium volume",      PURPLE,     accent=PURPLE),
-            kpi_card("Total Premium",   format_currency(total_cli_prem), "Across all clients",   GREEN,      accent=GREEN),
-            kpi_card("Sub-Categories",  str(n_sub_cats),               "Distinct sub-products",  TVS_ORANGE, accent=TVS_ORANGE),
+            kpi_card("Avg Client Premium", format_currency(avg_client_prem), "Avg premium per account", GREEN,      accent=GREEN),
+            kpi_card("Client Concentration", f"{client_concentration:.1f}%", "Top client share",     TVS_ORANGE, accent=TVS_ORANGE),
         ),
         hrow(chart_box(fig_sub, "sub-cat", flex="1"), chart_box(fig_top, "top-client-chart", flex="1"))
     )
@@ -899,6 +961,8 @@ def build_tab6b_content(df_filtered, selected_channel="all", df_all=None):
 
     n_channels = df_filtered['distribution_channel'].nunique() if 'distribution_channel' in df_filtered.columns else 0
     total_chan_prem = df_filtered[premium_col].sum() if premium_col else 0
+    total_channel_policies = len(df_filtered)
+    avg_chan_policy_premium = (total_chan_prem / total_channel_policies) if total_channel_policies > 0 else 0
 
     # ── LEFT: Sunburst — Channel → Category → Sub-Category ──────────
     channel_palette = [TVS_BLUE, TVS_ORANGE, GREEN, PURPLE, AMBER, RED, "#3B82F6", "#EC4899"]
@@ -970,8 +1034,9 @@ def build_tab6b_content(df_filtered, selected_channel="all", df_all=None):
             "barmode": "stack",
             "legend": dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1,
                            font=dict(size=9, family="Plus Jakarta Sans, Inter, sans-serif")),
-            "xaxis": dict(title="Premium (₹)", tickformat=",", gridcolor="#F3F4F6"),
-            "yaxis": dict(title="", tickfont=dict(size=10)),
+            "xaxis": dict(title="Premium (₹)", tickformat=",", gridcolor="#F3F4F6", 
+                          title_font=dict(size=10, color="#374151"), tickfont=dict(size=9.5, color="#374151")),
+            "yaxis": dict(title="", tickfont=dict(size=10, color="#374151")),
             "margin": dict(t=40, b=10, l=10, r=10),
         }
         fig_bar.update_layout(**_bar_cfg)
@@ -985,7 +1050,7 @@ def build_tab6b_content(df_filtered, selected_channel="all", df_all=None):
     return tab_layout(
         kpi_row(
             kpi_card(kpi_card_1_title, kpi_card_1_val, kpi_card_1_sub, theme="tvs-blue"),
-            kpi_card("Total Premium", format_currency(total_chan_prem), "Across all channels" if selected_channel == "all" else "For selected channel", theme="tvs-orange"),
+            kpi_card("Avg Premium/Policy", format_currency(avg_chan_policy_premium), "Avg premium per policy", theme="tvs-orange"),
             kpi_card(kpi_title_3, top_value, "By written premium", theme="tvs-blue"),
         ),
         html.Div([
@@ -1140,7 +1205,7 @@ def tab7(df):
     # ── Commission Margin % Trend Over Time ──
     if 'issue_date' in df.columns and premium_col and comm_col:
         df2 = df.copy()
-        df2['issue_month'] = pd.to_datetime(df2['issue_date']).dt.to_period('M').astype(str)
+        df2['issue_month'] = pd.to_datetime(df2['issue_date']).dt.to_period('M').astype(str)  # type: ignore
         trend = df2.groupby('issue_month').agg(
             Premium=(premium_col, 'sum'),
             Commission=(comm_col, 'sum')
@@ -1166,7 +1231,7 @@ def tab7(df):
         _ax(fig_trend.update_layout(
             **_cfg(), yaxis_title="Margin (%)",
             xaxis=dict(tickvals=tick_vals_t, tickangle=-35,
-                       tickfont=dict(size=11, color="#6B7280"))
+                       tickfont=dict(size=11, color="#374151"))
         ))
     else:
         fig_trend = px.line(title="Margin Trend N/A")
@@ -1176,9 +1241,10 @@ def tab7(df):
     total_prem7  = df[premium_col].sum() if premium_col else 0
     carrier_profit = total_prem7 - total_claim7 - total_comm7
     comm_margin  = (total_comm7 / total_prem7 * 100) if total_prem7 > 0 else 0
+    avg_comm_per_policy = (total_comm7 / len(df)) if len(df) > 0 else 0
     return tab_layout(
         kpi_row(
-            kpi_card("Gross Commission", format_currency(total_comm7), "Total earned",
+            kpi_card("Avg Comm/Policy", format_currency(avg_comm_per_policy), "Avg commission / policy",
                      GREEN, accent=GREEN, theme="tvs-blue"),
             kpi_card("Carrier Profit",   format_currency(carrier_profit), "Prem − Claims − Comm",
                      GREEN if carrier_profit >= 0 else RED,
@@ -1210,7 +1276,7 @@ def tab8(df):
     trend = None
     if 'issue_date' in df.columns and premium_col and comm_col:
         df2 = df.copy()
-        df2['issue_month'] = pd.to_datetime(df2['issue_date']).dt.to_period('M').astype(str)
+        df2['issue_month'] = pd.to_datetime(df2['issue_date']).dt.to_period('M').astype(str)  # type: ignore
         trend = df2.groupby('issue_month').agg(
             Premium=(premium_col, 'sum'),
             Commission=(comm_col, 'sum')
@@ -1229,9 +1295,10 @@ def tab8(df):
             (mg[comm_col] / mg[premium_col] * 100).round(1),
             0
         )
+        mg['MarginLabel'] = mg['margin_pct'].apply(lambda x: f"{x:.1f}%")
         fig_margin = px.bar(mg, x='category', y='margin_pct',
-                            title="Average Margin % by Product Category", text_auto=True)
-        fig_margin.update_traces(marker_color=TVS_ORANGE)
+                            title="Average Margin % by Product Category", text='MarginLabel')
+        fig_margin.update_traces(marker_color=TVS_ORANGE, textposition='outside', cliponaxis=False)
         _ax(fig_margin.update_layout(**_cfg(), yaxis_title="Margin (%)"))
     else:
         fig_margin = px.bar(title="Margin Data N/A")
@@ -1239,12 +1306,15 @@ def tab8(df):
     # ── Commissions by Client Type Bar ──
     if 'client_type' in df.columns and comm_col:
         ct = df.groupby('client_type')[comm_col].sum().reset_index()
+        ct['Label'] = ct[comm_col].apply(format_currency)
         fig_client = px.bar(ct, y='client_type', x=comm_col, orientation='h',
                             title="Commissions by Client Type",
-                            color='client_type', color_discrete_sequence=px.colors.qualitative.Pastel)
-        fig_client.update_traces(showlegend=False, hovertemplate="<b>%{y}</b><br>₹%{x:,.0f}<extra></extra>")
+                            color='client_type', color_discrete_sequence=px.colors.qualitative.Pastel,
+                            text='Label')
+        fig_client.update_traces(showlegend=False, textposition='outside', cliponaxis=False,
+                                 hovertemplate="<b>%{y}</b><br>₹%{x:,.0f}<extra></extra>")
         fig_client.update_layout(**_cfg())
-        fig_client.update_layout(margin=dict(t=60, r=30))
+        fig_client.update_layout(margin=dict(t=60, r=120))
         fig_client.update_yaxes(categoryorder='total ascending', title=None, automargin=True)
         fig_client.update_xaxes(title="Total Commissions (₹)", automargin=True)
     else:
@@ -1259,11 +1329,32 @@ def tab8(df):
     comm_total8  = df[comm_col].sum()    if comm_col    else 0
     prem_total8  = df[premium_col].sum() if premium_col else 0
     comm_margin8 = (comm_total8 / prem_total8 * 100) if prem_total8 > 0 else 0
+    
+    b2b_margin = 0.0
+    if 'client_type' in df.columns and premium_col and comm_col:
+        b2b_df = df[df['client_type'].str.contains('B2B|Corporate', case=False, na=False)]
+        b2b_prem = b2b_df[premium_col].sum()
+        b2b_comm = b2b_df[comm_col].sum()
+        b2b_margin = (b2b_comm / b2b_prem * 100) if b2b_prem > 0 else 0
+
+    top_margin_cat = "N/A"
+    top_margin_val = 0.0
+    if 'category' in df.columns and premium_col and comm_col:
+        try:
+            cg8 = df.groupby('category').agg(P=(premium_col, 'sum'), C=(comm_col, 'sum')).reset_index()
+            cg8['margin'] = np.where(cg8['P'] > 0, cg8['C'] / cg8['P'] * 100, 0)
+            if not cg8.empty:
+                max_row = cg8.loc[cg8['margin'].idxmax()]
+                top_margin_cat = max_row['category']
+                top_margin_val = max_row['margin']
+        except Exception:
+            pass
+
     return tab_layout(
         kpi_row(
             kpi_card("Avg Margin Trend", f"{avg_margin8:.1f}%",        "Monthly avg margin",     TVS_ORANGE, accent=TVS_ORANGE, theme="tvs-orange"),
-            kpi_card("Portfolio Margin", f"{comm_margin8:.1f}%",       "Overall comm / premium", GREEN,      accent=GREEN),
-            kpi_card("Gross Commission", format_currency(comm_total8), "Total earned",           TVS_BLUE,   theme="tvs-blue"),
+            kpi_card("Corporate Margin", f"{b2b_margin:.1f}%",         "Corporate/B2B margin",   GREEN,      accent=GREEN),
+            kpi_card("Top Margin Category", f"{top_margin_cat} ({top_margin_val:.1f}%)", "LOB with highest avg margin", TVS_BLUE, theme="tvs-blue"),
         ),
         hrow(
             chart_box(fig_margin, "margin-cat-chart", flex="1"),
@@ -1289,7 +1380,7 @@ def tab9(df):
     fig_heat = px.bar(title="Renewal Data N/A")
     if 'expiry_date' in df2.columns and premium_col:
         future = df2[df2['expiry_date'] >= now].copy()
-        future['exp_month_period'] = future['expiry_date'].dt.to_period('M')
+        future['exp_month_period'] = future['expiry_date'].dt.to_period('M')  # type: ignore
         exp_monthly = future.groupby('exp_month_period').agg(
             Policies=('policy_number', 'count') if 'policy_number' in future.columns else (premium_col, 'count'),
             At_Risk_Premium=(premium_col, 'sum')
@@ -1307,7 +1398,7 @@ def tab9(df):
         _ax(fig_heat.update_layout(**_cfg(), xaxis_title="Expiry Month", yaxis_title="Policy Count"))
 
     if 'expiry_date' in df2.columns and premium_col:
-        df2['days_to_expiry'] = (df2['expiry_date'] - now).dt.days
+        df2['days_to_expiry'] = (df2['expiry_date'] - now).dt.days  # type: ignore
         b0_30   = df2[(df2['days_to_expiry'] >= 0) & (df2['days_to_expiry'] <= 30)]
         b31_60  = df2[(df2['days_to_expiry'] > 30) & (df2['days_to_expiry'] <= 60)]
         b61_90  = df2[(df2['days_to_expiry'] > 60) & (df2['days_to_expiry'] <= 90)]
@@ -1366,7 +1457,7 @@ def tab10(df):
 
     fig_vintage = px.bar(title="Vintage Data N/A")
     if 'issue_date' in df2.columns and 'policy_status' in df2.columns:
-        df2['issue_quarter'] = df2['issue_date'].dt.to_period('Q').astype(str)
+        df2['issue_quarter'] = df2['issue_date'].dt.to_period('Q').astype(str)  # type: ignore
         cohort = df2.groupby(['issue_quarter', 'policy_status']).size().reset_index(name='count')
         fig_vintage = px.bar(cohort, x='issue_quarter', y='count', color='policy_status',
                              title="Policy Vintage Cohort — Outcome by Issue Quarter",
@@ -1416,6 +1507,10 @@ def tab11(df):
         fig_reg = px.bar(reg_df, x='region', y=[premium_col, claim_col], barmode='group',
                          title="Total Premium & Claims by Region",
                          color_discrete_map={premium_col: TVS_BLUE, claim_col: TVS_ORANGE})
+        fig_reg.for_each_trace(lambda t: t.update(
+            text=[format_currency(v) for v in t.y],
+            textposition='outside', cliponaxis=False
+        ))
         fig_reg.update_traces(hovertemplate="<b>%{x}</b><br>₹%{y:,.0f}<extra></extra>")
         fig_reg.update_layout(**_cfg(), legend_title="Metric")
         fig_reg.update_layout(margin=dict(t=60, r=30))
@@ -1447,12 +1542,22 @@ def tab11(df):
         top_region = "N/A"
     reg_prem    = df[premium_col].sum()          if premium_col else 0
     reg_claim   = df[claim_col].sum()            if claim_col   else 0
+    avg_reg_prem = (reg_prem / n_regions) if n_regions > 0 else 0
+    top_reg_lr = 0.0
+    if 'region' in df.columns and premium_col and claim_col and top_region != "N/A":
+        try:
+            top_reg_df = df[df['region'] == top_region]
+            top_reg_prem = top_reg_df[premium_col].sum()
+            top_reg_claim = top_reg_df[claim_col].sum()
+            top_reg_lr = (top_reg_claim / top_reg_prem * 100) if top_reg_prem > 0 else 0
+        except Exception:
+            pass
     return tab_layout(
         kpi_row(
             kpi_card("Regions",       str(n_regions),            "Distinct regions",     TVS_BLUE),
             kpi_card("Top Region",    top_region,                "By written premium",   TVS_ORANGE, accent=TVS_ORANGE),
-            kpi_card("Total Premium", format_currency(reg_prem), "Across all regions",   GREEN,      accent=GREEN),
-            kpi_card("Total Claims",  format_currency(reg_claim),"Across all regions",   RED,        accent=RED),
+            kpi_card("Avg Premium/Region", format_currency(avg_reg_prem), "Avg premium / active region", GREEN,      accent=GREEN),
+            kpi_card("Top Region Loss Ratio", f"{top_reg_lr:.1f}%", f"Loss Ratio in {top_region}", RED,        accent=RED),
         ),
         hrow(
             chart_box(fig_reg, "region-bar-chart", flex="2"),
@@ -2240,7 +2345,7 @@ def tab14(dff):
     ctypes = [{"label": "All Clients", "value": "__all__"}] + [{"label": str(c), "value": str(c)} for c in sorted(dff['client_type'].dropna().unique())] if 'client_type' in dff.columns else []
 
     if 'issue_date' in dff.columns:
-        dates = pd.to_datetime(dff['issue_date'], errors='coerce').dropna()
+        dates = pd.to_datetime(dff['issue_date'], errors='coerce').dropna()  # type: ignore
         min_d = dates.min().date().isoformat() if not dates.empty else None
         max_d = dates.max().date().isoformat() if not dates.empty else None
     else:
@@ -2438,3 +2543,572 @@ def tab14(dff):
         "padding": "14px", "height": "100%",
         "display": "flex", "flexDirection": "column", "gap": "0px",
     })
+
+def build_ai_chart(data):
+    if not data or not isinstance(data, list) or len(data) == 0:
+        return None
+    
+    df = pd.DataFrame(data)
+    
+    # Try to convert columns to numeric if they are strings of numbers
+    for col in df.columns:
+        if pd.api.types.is_numeric_dtype(df[col]):
+            continue
+        try:
+            cleaned = df[col].astype(str).str.replace(r'[₹$,]', '', regex=True).str.strip()
+            df[col] = pd.to_numeric(cleaned, errors='coerce')
+        except Exception:
+            pass
+
+    num_cols = []
+    cat_cols = []
+    date_cols = []
+    
+    for col in df.columns:
+        col_lower = col.lower()
+        if 'date' in col_lower or 'time' in col_lower or pd.api.types.is_datetime64_any_dtype(df[col]):
+            date_cols.append(col)
+        elif pd.api.types.is_numeric_dtype(df[col]):
+            if 'id' in col_lower or 'code' in col_lower:
+                cat_cols.append(col)
+            else:
+                num_cols.append(col)
+        else:
+            cat_cols.append(col)
+
+    # 1. KPI Card Case (1 row, 1 numeric column)
+    if len(df) == 1 and len(num_cols) == 1:
+        val = df[num_cols[0]].iloc[0]
+        col_name = num_cols[0].replace('_', ' ').title()
+        
+        def format_rupee(val):
+            try:
+                val = float(val)
+                s = f"{val:.2f}"
+                parts = s.split('.')
+                integer_part = parts[0]
+                decimal_part = parts[1]
+                if len(integer_part) <= 3:
+                    formatted_int = integer_part
+                else:
+                    last_three = integer_part[-3:]
+                    remaining = integer_part[:-3]
+                    groups = []
+                    while remaining:
+                        groups.append(remaining[-2:])
+                        remaining = remaining[:-2]
+                    groups.reverse()
+                    formatted_int = ",".join(groups) + "," + last_three
+                return f"₹{formatted_int}.{decimal_part}"
+            except Exception:
+                return str(val)
+
+        fmt_val = format_rupee(val) if any(x in col_name.lower() for x in ['premium', 'claim', 'commission', 'brokerage', 'amount', 'earned', 'paid', 'revenue']) else f"{val:,.2f}"
+        
+        return html.Div([
+            html.Div(col_name, className="report-kpi-label"),
+            html.Div(fmt_val, className="report-kpi-value"),
+            html.Div("Single Metric Query Result", className="report-kpi-sub")
+        ], className="report-kpi-card")
+
+    if not num_cols:
+        return None
+
+    label_x = cat_cols[0] if cat_cols else df.columns[0]
+    label_y = num_cols[0]
+    
+    clean_x = label_x.replace('_', ' ').title()
+    clean_y = label_y.replace('_', ' ').title()
+    
+    # 2. Time-series Line Chart
+    if date_cols and len(df) > 1:
+        try:
+            date_col = date_cols[0]
+            df[date_col] = pd.to_datetime(df[date_col])
+            df = df.sort_values(by=date_col)
+            fig = px.line(
+                df, 
+                x=date_col, 
+                y=label_y,
+                labels={date_col: date_col.replace('_', ' ').title(), label_y: clean_y},
+                template="plotly_white",
+                color_discrete_sequence=[TVS_BLUE]
+            )
+            fig.update_layout(
+                margin=dict(l=40, r=40, t=30, b=30),
+                height=300,
+                font_family="Plus Jakarta Sans, sans-serif"
+            )
+            return dcc.Graph(figure=fig, config={"displayModeBar": False})
+        except Exception:
+            pass
+
+    # 3. Bar Chart
+    if len(df) > 1:
+        if len(df) > 15:
+            df = df.head(15)
+        is_horizontal = len(df) <= 8 or df[label_x].astype(str).str.len().max() > 10
+        
+        if is_horizontal:
+            fig = px.bar(
+                df,
+                x=label_y,
+                y=label_x,
+                orientation='h',
+                labels={label_x: clean_x, label_y: clean_y},
+                template="plotly_white",
+                color_discrete_sequence=[TVS_BLUE]
+            )
+            fig.update_layout(yaxis={'categoryorder':'total ascending'})
+        else:
+            fig = px.bar(
+                df,
+                x=label_x,
+                y=label_y,
+                labels={label_x: clean_x, label_y: clean_y},
+                template="plotly_white",
+                color_discrete_sequence=[TVS_BLUE]
+            )
+            fig.update_layout(xaxis={'categoryorder':'total descending'})
+
+        fig.update_layout(
+            margin=dict(l=40, r=40, t=30, b=30),
+            height=300,
+            font_family="Plus Jakarta Sans, sans-serif"
+        )
+        fig.update_traces(marker_line_color='rgb(8,48,107)', marker_line_width=1, opacity=0.85)
+        return dcc.Graph(figure=fig, config={"displayModeBar": False})
+
+    return None
+
+
+def render_text_block(text, label="AI Insights Summary"):
+    if not text:
+        return None
+    is_error = text.startswith("⚠️") or "Error:" in text or "Exception" in text
+    if is_error:
+        return html.Div([
+            html.Div(label, className="report-section-label", style={"color": "#EF4444"}),
+            html.Div(text, style={
+                "color": "#B91C1C", "fontFamily": "Consolas, Monaco, monospace",
+                "fontSize": "11.5px", "whiteSpace": "pre-wrap", "lineHeight": "1.5"
+            })
+        ], className="report-ai-summary", style={"background": "#FEF2F2", "borderLeft": "3px solid #EF4444", "borderColor": "#EF4444"})
+    else:
+        return html.Div([
+            html.Div(label, className="report-section-label"),
+            dcc.Markdown(text, style={"margin": "0"})
+        ], className="report-ai-summary")
+
+
+def build_report_panel(history):
+    if not history:
+        return html.Div([
+            html.Div("No active session data to generate a report from. Ask some questions first!",
+                     style={"textAlign": "center", "color": "#64748B", "padding": "40px"})
+        ])
+        
+    user_msgs = [m for m in history if m.get("sender") == "user"]
+    ai_msgs   = [m for m in history if m.get("sender") == "ai"]
+    
+    banner = html.Div([
+        html.Div([
+            html.Span("Session Summary: ", style={"fontWeight": "bold", "color": TVS_BLUE}),
+            html.Span(f"This session contains {len(user_msgs)} user question(s) and {len(ai_msgs)} AI analysis reports.")
+        ])
+    ], className="report-session-banner")
+    
+    sections = []
+    q_idx = 0
+    i = 0
+    while i < len(history):
+        msg = history[i]
+        if msg.get("sender") == "user":
+            q_idx += 1
+            q_text = msg.get("text", "")
+            
+            ai_msg = {}
+            if i + 1 < len(history) and history[i + 1].get("sender") == "ai":
+                ai_msg = history[i + 1]
+                
+            ai_text = ai_msg.get("text", "")
+            ai_sql = ai_msg.get("sql")
+            ai_data = ai_msg.get("data")
+            
+            chart_el = None
+            if ai_data:
+                chart_el = build_ai_chart(ai_data)
+                
+            table_el = None
+            if ai_data and isinstance(ai_data, list) and len(ai_data) > 0:
+                def format_rupee(val):
+                    if val is None:
+                        return ""
+                    try:
+                        val = float(val)
+                    except (ValueError, TypeError):
+                        return str(val)
+                    s = f"{val:.2f}"
+                    parts = s.split('.')
+                    integer_part = parts[0]
+                    decimal_part = parts[1]
+                    if len(integer_part) <= 3:
+                        formatted_int = integer_part
+                    else:
+                        last_three = integer_part[-3:]
+                        remaining = integer_part[:-3]
+                        groups = []
+                        while remaining:
+                            groups.append(remaining[-2:])
+                            remaining = remaining[:-2]
+                        groups.reverse()
+                        formatted_int = ",".join(groups) + "," + last_three
+                    return f"₹{formatted_int}.{decimal_part}"
+
+                formatted_data = []
+                currency_cols = set()
+                sample_row = ai_data[0]
+                for col_key in sample_row.keys():
+                    col_lower = col_key.lower()
+                    if any(term in col_lower for term in ['premium', 'claim', 'commission', 'brokerage', 'amount', 'earned', 'paid', 'revenue']):
+                        currency_cols.add(col_key)
+                
+                for row in ai_data:
+                    formatted_row = {}
+                    for k, v in row.items():
+                        if k in currency_cols and v is not None:
+                            formatted_row[k] = format_rupee(v)
+                        else:
+                            if isinstance(v, float):
+                                formatted_row[k] = f"{v:.2f}"
+                            else:
+                                formatted_row[k] = v
+                    formatted_data.append(formatted_row)
+
+                columns = [{"name": k.replace('_', ' ').title(), "id": k} for k in ai_data[0].keys()]
+                table_el = html.Div([
+                    html.Div("Raw Data Table", className="report-section-label", style={"marginTop": "14px"}),
+                    dash_table.DataTable(
+                        data=formatted_data,
+                        columns=columns,
+                        page_size=5,
+                        style_cell={
+                            'fontFamily': 'Plus Jakarta Sans, Inter, sans-serif',
+                            'fontSize': '11px',
+                            'padding': '6px 10px',
+                            'border': '1px solid #E2E8F0',
+                            'textAlign': 'left'
+                        },
+                        style_header={
+                            'backgroundColor': '#F1F5F9',
+                            'fontWeight': '700',
+                            'color': '#334155',
+                            'border': '1px solid #CBD5E1'
+                        },
+                        style_table={'overflowX': 'auto', 'marginTop': '4px', 'borderRadius': '6px'},
+                        style_data_conditional=[{'if': {'row_index': 'odd'}, 'backgroundColor': '#F8FAFC'}]
+                    )
+                ])
+
+            sql_el = None
+            if ai_sql:
+                sql_el = html.Div([
+                    html.Details([
+                        html.Summary("View Generated SQL Query", style={"fontWeight": "600", "color": TVS_BLUE, "cursor": "pointer"}),
+                        html.Pre(
+                            ai_sql,
+                            style={
+                                "background": "#F1F5F9", "padding": "12px", "borderRadius": "6px",
+                                "fontFamily": "Consolas, Monaco, monospace", "fontSize": "11px", "marginTop": "8px",
+                                "overflowX": "auto", "whiteSpace": "pre-wrap", "border": "1px solid #E2E8F0"
+                            }
+                        )
+                    ], style={"marginTop": "14px", "fontSize": "12px"})
+                ])
+                
+            sections.append(
+                html.Div([
+                    html.Div(f"Question {q_idx}", className="report-q-badge"),
+                    html.H2(q_text, className="report-q-text"),
+                    
+                    html.Div(chart_el, className="report-chart-wrap") if chart_el else None,
+                    
+                    render_text_block(ai_text, "AI Insights Summary") if ai_text else None,
+                    
+                    table_el,
+                    sql_el
+                ], className="report-section")
+            )
+            i += 2
+        else:
+            i += 1
+            
+    return html.Div([banner] + sections)
+
+
+def format_sql_query(sql_str):
+    if not sql_str:
+        return html.Pre("")
+    keywords = {
+        'SELECT', 'FROM', 'JOIN', 'LEFT', 'RIGHT', 'INNER', 'OUTER', 'ON', 'WHERE',
+        'AND', 'OR', 'GROUP', 'BY', 'ORDER', 'LIMIT', 'SUM', 'COUNT', 'AVG', 'MIN',
+        'MAX', 'IFNULL', 'COALESCE', 'AS', 'IN', 'HAVING', 'CASE', 'WHEN', 'THEN',
+        'ELSE', 'END', 'LIKE', 'DESC', 'ASC', 'UNION', 'ALL'
+    }
+    
+    lines = sql_str.split('\n')
+    formatted_lines = []
+    
+    for line in lines:
+        import re
+        tokens = re.split(r'(\s+|,|\(|\))', line)
+        line_children = []
+        for token in tokens:
+            if not token:
+                continue
+            token_clean = token.strip().upper()
+            if token_clean in keywords:
+                line_children.append(html.Span(token, style={"color": "#1B3B8B", "fontWeight": "700"}))
+            elif token.startswith("'") or token.startswith('"'):
+                line_children.append(html.Span(token, style={"color": "#0F766E"}))
+            elif token.isdigit():
+                line_children.append(html.Span(token, style={"color": "#7C3AED"}))
+            else:
+                line_children.append(html.Span(token, style={"color": "#334155"}))
+        formatted_lines.append(html.Div(line_children, style={"minHeight": "1.2em"}))
+        
+    return html.Pre(formatted_lines, style={
+        "background": "#F8FAFC", "padding": "12px", "borderRadius": "6px",
+        "fontFamily": "Consolas, Monaco, monospace", "fontSize": "11px", "marginTop": "8px",
+        "overflowX": "auto", "border": "1px solid #E2E8F0", "lineHeight": "1.4"
+    })
+
+
+def build_chat_bubbles(history):
+    if not history:
+        return [
+            html.Div([
+                html.Div("✧", style={"fontSize": "32px", "color": TVS_ORANGE, "textAlign": "center", "marginBottom": "8px"}),
+                html.Div("Hello! I am your AI Insurance Assistant.", style={
+                    "fontWeight": "700", "fontSize": "15px", "color": TVS_BLUE, 
+                    "textAlign": "center", "marginBottom": "6px", "fontFamily": "Plus Jakarta Sans, sans-serif"
+                }),
+                html.Div("Ask me business questions in natural language, and I will translate them to SQL, query your database, and summarize the findings. Try clicking a suggestion above!", style={
+                    "fontSize": "12px", "color": "#474D5A", "textAlign": "center", "lineHeight": "1.5"
+                })
+            ], style={"padding": "32px 24px", "background": "white", "borderRadius": "8px", "border": "1px dashed #CBD5E1", "maxWidth": "480px", "margin": "60px auto 0"})
+        ]
+        
+    bubbles = []
+    for msg in history:
+        sender = msg.get("sender")
+        text = msg.get("text", "")
+        sql = msg.get("sql")
+        data = msg.get("data")
+        
+        if sender == "user":
+            bubbles.append(
+                html.Div(
+                    html.Div(text, className="chat-bubble chat-bubble--user"),
+                    className="chat-bubble-row chat-bubble-row--user"
+                )
+            )
+        else:
+            if msg.get("is_placeholder"):
+                ai_children = [
+                    html.Div([
+                        html.Div(className="premium-spinner"),
+                        html.Div([
+                            html.Span("AI Assistant Status: ", style={"fontWeight": "700", "color": TVS_BLUE}),
+                            html.Span(text, style={"color": TVS_ORANGE, "fontWeight": "600"})
+                        ], style={"fontSize": "12px", "marginLeft": "8px"})
+                    ], style={"display": "flex", "alignItems": "center", "padding": "4px 0"})
+                ]
+            else:
+                is_error = text.startswith("⚠️") or "Error:" in text or "Exception" in text
+                if is_error:
+                    ai_children = [
+                        html.Div(text, style={
+                            "color": "#B91C1C", "fontFamily": "Consolas, Monaco, monospace",
+                            "fontSize": "11.5px", "whiteSpace": "pre-wrap", "lineHeight": "1.5",
+                            "padding": "10px 14px", "background": "#FEF2F2", "borderRadius": "6px",
+                            "borderLeft": "3px solid #EF4444"
+                        })
+                    ]
+                else:
+                    ai_children = [
+                        dcc.Markdown(text, style={"margin": "0"})
+                    ]
+            
+            if sql:
+                ai_children.append(
+                    html.Div([
+                        html.Details([
+                            html.Summary("View Generated SQL Query", style={"fontWeight": "600", "color": TVS_BLUE, "cursor": "pointer", "outline": "none"}),
+                            format_sql_query(sql)
+                        ], style={"marginTop": "10px", "fontSize": "12px"})
+                    ])
+                )
+                
+            if data and isinstance(data, list) and len(data) > 0:
+                def format_rupee(val):
+                    if val is None:
+                        return ""
+                    try:
+                        val = float(val)
+                    except (ValueError, TypeError):
+                        return str(val)
+                    s = f"{val:.2f}"
+                    parts = s.split('.')
+                    integer_part = parts[0]
+                    decimal_part = parts[1]
+                    if len(integer_part) <= 3:
+                        formatted_int = integer_part
+                    else:
+                        last_three = integer_part[-3:]
+                        remaining = integer_part[:-3]
+                        groups = []
+                        while remaining:
+                            groups.append(remaining[-2:])
+                            remaining = remaining[:-2]
+                        groups.reverse()
+                        formatted_int = ",".join(groups) + "," + last_three
+                    return f"₹{formatted_int}.{decimal_part}"
+
+                formatted_data = []
+                currency_cols = set()
+                sample_row = data[0]
+                for col_key in sample_row.keys():
+                    col_lower = col_key.lower()
+                    if any(term in col_lower for term in ['premium', 'claim', 'commission', 'brokerage', 'amount', 'earned', 'paid', 'revenue']):
+                        currency_cols.add(col_key)
+                
+                for row in data:
+                    formatted_row = {}
+                    for k, v in row.items():
+                        if k in currency_cols and v is not None:
+                            formatted_row[k] = format_rupee(v)
+                        else:
+                            if isinstance(v, float):
+                                formatted_row[k] = f"{v:.2f}"
+                            else:
+                                formatted_row[k] = v
+                    formatted_data.append(formatted_row)
+
+                columns = [{"name": k.replace('_', ' ').title(), "id": k} for k in data[0].keys()]
+                table = dash_table.DataTable(
+                    data=formatted_data,
+                    columns=columns,
+                    page_size=5,
+                    style_cell={
+                        'fontFamily': 'Plus Jakarta Sans, Inter, sans-serif',
+                        'fontSize': '11px',
+                        'padding': '6px 10px',
+                        'border': '1px solid #E2E8F0',
+                        'textAlign': 'left'
+                    },
+                    style_header={
+                        'backgroundColor': '#F1F5F9',
+                        'fontWeight': '700',
+                        'color': '#334155',
+                        'border': '1px solid #CBD5E1'
+                    },
+                    style_table={'overflowX': 'auto', 'marginTop': '10px', 'borderRadius': '6px'},
+                    style_data_conditional=[{'if': {'row_index': 'odd'}, 'backgroundColor': '#F8FAFC'}]
+                )
+                ai_children.append(table)
+                
+            bubbles.append(
+                html.Div(
+                    html.Div(ai_children, className="chat-bubble chat-bubble--ai"),
+                    className="chat-bubble-row chat-bubble-row--ai"
+                )
+            )
+    return bubbles
+
+def tab15(df):
+    header = html.Div([
+        html.Div([
+            html.H1("AI Chat Assistant", style={
+                "fontSize": "22px", "fontWeight": "800", "color": TVS_BLUE, 
+                "margin": "0", "fontFamily": "Plus Jakarta Sans, sans-serif"
+            }),
+            html.Div("Ask questions in natural language. Powered by Gemini, querying your local MySQL database securely.", style={
+                "fontSize": "11px", "color": "#717784", "marginTop": "2px"
+            })
+        ]),
+    ], style={
+        "display": "flex", "justifyContent": "space-between", "alignItems": "center",
+        "paddingBottom": "10px", "borderBottom": "1px solid #E5E7EB", "marginBottom": "14px"
+    })
+    
+    suggestions = [
+        "What is our total written premium?",
+        "Show me the top 3 clients by premium",
+        "Which region has the highest claim amount?",
+        "List our active product categories and carriers",
+        "What is our overall loss ratio?"
+    ]
+    
+    suggestion_elements = html.Div([
+        html.Button(
+            s, 
+            id={"type": "chat-suggestion", "index": idx}, 
+            n_clicks=0,
+            className="suggestion-chip"
+        ) for idx, s in enumerate(suggestions)
+    ], style={"display": "flex", "flexWrap": "wrap", "marginBottom": "10px"})
+    
+    chat_history_div = html.Div([
+        dcc.Interval(
+            id="chat-status-interval",
+            interval=600,
+            disabled=True,
+            n_intervals=0
+        ),
+        dcc.Store(id="chat-session-id"),
+        html.Div(
+            id="chat-history-container",
+            children=build_chat_bubbles([]),
+            className="chat-history",
+            style={"flex": "1", "overflowY": "auto", "marginBottom": "0px"}
+        ),
+    ], style={"flex": "1", "display": "flex", "flexDirection": "column", "overflow": "hidden", "marginBottom": "12px"})
+    
+    input_box = html.Div([
+        dcc.Textarea(
+            id="chat-user-input",
+            placeholder="Ask anything about written premiums, claims, clients, or commissions... (e.g. 'Show me the total premium for HDFC Ergo')",
+            className="chat-input-textarea",
+            style={"width": "100%", "height": "60px", "minHeight": "60px", "resize": "none"}
+        ),
+        dcc.Textarea(
+            id="pdf-executive-notes",
+            placeholder="Optional: Add custom executive summary notes to Page 1 of the PDF report...",
+            className="chat-input-textarea",
+            style={"width": "100%", "height": "40px", "minHeight": "40px", "resize": "none", "marginTop": "8px", "fontSize": "11px", "borderColor": "#CBD5E1"}
+        ),
+        html.Div([
+            html.Button("Clear Chat", id="btn-clear-chat", n_clicks=0, className="hdr-btn hdr-btn--outline", style={"fontSize": "11.5px", "padding": "7px 18px"}),
+            html.Div([
+                html.Button("Ask AI", id="btn-send-chat", n_clicks=0, className="hdr-btn hdr-btn--green", style={"fontSize": "11.5px", "padding": "7px 24px"}),
+            ], style={"display": "flex", "gap": "8px"}),
+        ], style={"display": "flex", "justifyContent": "space-between", "marginTop": "10px"}),
+    ], style={
+        "background": "white", "borderRadius": "8px", "padding": "12px",
+        "border": "1px solid #E2E8F0", "boxShadow": "0 2px 8px rgba(27,59,139,0.05)", "marginTop": "4px"
+    })
+    
+    layout = html.Div([
+        header,
+        html.Div("Quick Suggestions:", style={"fontSize": "12px", "fontWeight": "600", "color": "#474D5A", "marginBottom": "6px"}),
+        suggestion_elements,
+        chat_history_div,
+        input_box
+    ], className="tab-pane", style={
+        "padding": "14px", "height": "calc(100vh - 100px)",
+        "display": "flex", "flexDirection": "column", "gap": "0px",
+    })
+    
+    return layout
+

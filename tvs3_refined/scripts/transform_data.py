@@ -84,7 +84,7 @@ def main():
     status_map = {
         'closed': 'Active',
         'won': 'Active',
-        'lost': 'Cancelled',
+        'lost': 'Cancelled',  
         'active': 'Active',
         'expired': 'Expired',
         'renewed': 'Renewed',
@@ -107,3 +107,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+

@@ -6,6 +6,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+import create_audit_tables
+create_audit_tables.init_tables()
+
 def get_engine():
     db_host = os.getenv('DB_HOST', 'localhost')
     db_user = os.getenv('DB_USER', 'root')
@@ -23,7 +26,7 @@ def write_df_to_mysql(df):
     """
     engine = get_engine()
     
-    summary = {
+    summary: dict = {
         'appended_count': 0,
         'duplicates': [],
         'updates': []
@@ -61,21 +64,21 @@ def write_df_to_mysql(df):
                 df[col] = default_val
     
     # Normalize numeric columns
-    df['premium_amount'] = pd.to_numeric(df['premium_amount'], errors='coerce').fillna(0.0)
-    df['claim_amount'] = pd.to_numeric(df['claim_amount'], errors='coerce').fillna(0.0)
-    df['commission_earned'] = pd.to_numeric(df['commission_earned'], errors='coerce').fillna(0.0)
+    df['premium_amount'] = pd.to_numeric(df['premium_amount'], errors='coerce').fillna(0.0)  # type: ignore
+    df['claim_amount'] = pd.to_numeric(df['claim_amount'], errors='coerce').fillna(0.0)  # type: ignore
+    df['commission_earned'] = pd.to_numeric(df['commission_earned'], errors='coerce').fillna(0.0)  # type: ignore
     
     # Ensure dates are strings for database consistency if needed
     if 'issue_date' in df.columns:
         df['issue_date'] = pd.to_datetime(df['issue_date'], errors='coerce')
-        df['issue_date_str'] = df['issue_date'].dt.strftime('%Y-%m-%d %H:%M:%S')
+        df['issue_date_str'] = df['issue_date'].dt.strftime('%Y-%m-%d %H:%M:%S')  # type: ignore
     else:
         df['issue_date'] = today
         df['issue_date_str'] = today.strftime('%Y-%m-%d %H:%M:%S')
 
     if 'expiry_date' in df.columns:
         df['expiry_date'] = pd.to_datetime(df['expiry_date'], errors='coerce')
-        df['expiry_date_str'] = df['expiry_date'].dt.strftime('%Y-%m-%d %H:%M:%S')
+        df['expiry_date_str'] = df['expiry_date'].dt.strftime('%Y-%m-%d %H:%M:%S')  # type: ignore
     else:
         df['expiry_date'] = df['issue_date'] + pd.DateOffset(years=1)
         df['expiry_date_str'] = df['expiry_date'].dt.strftime('%Y-%m-%d %H:%M:%S')
@@ -155,7 +158,7 @@ def write_df_to_mysql(df):
         existing_commissions = {row.policy_id: row for row in existing_commissions_df.itertuples()}
 
         # Query max IDs from ALL records (active and inactive) for safe key generation
-        max_ids = {}
+        max_ids: dict[str, int] = {}
         for id_col, table in [
             ('client_id', 'clients'),
             ('carrier_id', 'carriers'),
@@ -276,7 +279,7 @@ def write_df_to_mysql(df):
                     'region_name': r_name,
                     'address': f"{r_name} Area"
                 }
-                existing_clients_details[client_id] = pd.Series(new_cl_detail)
+                existing_clients_details[client_id] = pd.Series(new_cl_detail)  # type: ignore
                 
                 os.makedirs('logs', exist_ok=True)
                 timestamp = pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -318,7 +321,7 @@ def write_df_to_mysql(df):
             new_clients.append(new_c)
             new_clients_by_id[client_id] = new_c
             existing_clients[c_name_upper] = client_id
-            existing_clients_details[client_id] = pd.Series(new_c)
+            existing_clients_details[client_id] = pd.Series(new_c)  # type: ignore
 
         # Resolve carrier and product
         carrier_name = str(row.carrier_name).strip()
@@ -475,7 +478,7 @@ def write_df_to_mysql(df):
                     'status': csv_status,
                     'distribution_channel': csv_channel
                 }
-                existing_policies[p_num_upper] = pd.Series(new_pol_cache)
+                existing_policies[p_num_upper] = pd.Series(new_pol_cache)  # type: ignore
                 
                 os.makedirs('logs', exist_ok=True)
                 timestamp = pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -494,6 +497,7 @@ def write_df_to_mysql(df):
                 })
 
             # 2. Check Sales Commission
+            existing_comm = None
             csv_comm = float(row.commission_earned)
             if p_id in existing_commissions or p_id in new_commissions_by_pid:
                 if p_id in new_commissions_by_pid:
@@ -554,6 +558,7 @@ def write_df_to_mysql(df):
                 })
 
             # 3. Check Claims
+            existing_cl = None
             if p_id in existing_claims or p_id in new_claims_by_pid:
                 if p_id in new_claims_by_pid:
                     staged_cl = new_claims_by_pid[p_id]
@@ -598,12 +603,30 @@ def write_df_to_mysql(df):
                                 f.write(history_log_line)
                         except Exception as log_err:
                             print(f"[db_writer] Error writing claim status history log: {log_err}")
+                        try:
+                            with engine.connect() as conn:
+                                conn.execute(
+                                    text("INSERT INTO audit_claim_status_history (claim_number, old_status, new_status, changed_by) VALUES (:claim_num, :old, :new, :by)"),
+                                    {"claim_num": cl_num, "old": db_claim_status, "new": uploaded_claim_status, "by": "System Admin"}
+                                )
+                                conn.execute(text("COMMIT;"))
+                        except Exception as db_err:
+                            print(f"[db_writer] Error logging status change to DB: {db_err}")
                     
                     for change in claim_changes:
                         log_line = f"[{timestamp}] Claim {cl_num} (Policy {p_num}): {change} by Ingestion.\n"
                         with open(os.path.join('logs', 'dataset_updates.log'), 'a') as f:
                             f.write(log_line)
                         print(f"[db_writer] Claim {cl_num} update logged: {change}")
+                        try:
+                            with engine.connect() as conn:
+                                conn.execute(
+                                    text("INSERT INTO audit_dataset_updates (claim_number, policy_number, message) VALUES (:claim_num, :policy_num, :msg)"),
+                                    {"claim_num": cl_num, "policy_num": p_num, "msg": change}
+                                )
+                                conn.execute(text("COMMIT;"))
+                        except Exception as db_err:
+                            print(f"[db_writer] Error logging dataset update to DB: {db_err}")
                     
                     summary['updates'].append({
                         'policy_number': p_num,
@@ -637,12 +660,30 @@ def write_df_to_mysql(df):
                             f.write(history_log_line)
                     except Exception as log_err:
                         print(f"[db_writer] Error writing claim status history log: {log_err}")
+                    try:
+                        with engine.connect() as conn:
+                            conn.execute(
+                                text("INSERT INTO audit_claim_status_history (claim_number, old_status, new_status, changed_by) VALUES (:claim_num, :old, :new, :by)"),
+                                {"claim_num": cl_num, "old": "No Claim", "new": uploaded_claim_status, "by": "System Admin"}
+                            )
+                            conn.execute(text("COMMIT;"))
+                    except Exception as db_err:
+                        print(f"[db_writer] Error logging status change to DB: {db_err}")
                         
                     log_line = f"[{timestamp}] Claim {cl_num} (Policy {p_num}): Created with amount {claim_amt} and status '{uploaded_claim_status}' by Ingestion.\n"
                     with open(os.path.join('logs', 'dataset_updates.log'), 'a') as f:
                         f.write(log_line)
+                    try:
+                        with engine.connect() as conn:
+                            conn.execute(
+                                text("INSERT INTO audit_dataset_updates (claim_number, policy_number, message) VALUES (:claim_num, :policy_num, :msg)"),
+                                {"claim_num": cl_num, "policy_num": p_num, "msg": f"Created with amount {claim_amt} and status '{uploaded_claim_status}'"}
+                            )
+                            conn.execute(text("COMMIT;"))
+                    except Exception as db_err:
+                        print(f"[db_writer] Error logging dataset update to DB: {db_err}")
                         
-                    existing_claims[p_id] = pd.Series(new_cl)
+                    existing_claims[p_id] = pd.Series(new_cl)  # type: ignore
                     
                     summary['updates'].append({
                         'policy_number': p_num,
@@ -761,7 +802,7 @@ def write_df_to_mysql(df):
             }
             new_policies.append(new_pol)
             new_policies_by_num[p_num_upper] = new_pol
-            existing_policies[p_num_upper] = pd.Series(new_pol)
+            existing_policies[p_num_upper] = pd.Series(new_pol)  # type: ignore
             
             # 6. Insert sales commission
             max_ids['commission_id'] += 1
@@ -791,7 +832,7 @@ def write_df_to_mysql(df):
                 }
                 new_claims.append(new_cl)
                 new_claims_by_pid[policy_id] = new_cl
-                existing_claims[policy_id] = pd.Series(new_cl)
+                existing_claims[policy_id] = pd.Series(new_cl)  # type: ignore
 
     # Bulk insert all new records using pandas to_sql append
     with engine.connect() as conn:

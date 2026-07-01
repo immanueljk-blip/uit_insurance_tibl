@@ -1,16 +1,27 @@
 import os
+import time
 import pandas as pd
 from dotenv import load_dotenv
 
 load_dotenv()
 
-def get_data():
+# ── TTL cache for the live database query ──────────────────────────────────────
+# Caches the full dataset for up to 30 seconds so that tab switches don't each
+# fire a full MySQL round-trip, while still guaranteeing fresh data is visible
+# within 30 s of a commit (or immediately after force_refresh() is called).
+
+_CACHE_TTL      = 30          # seconds before re-querying MySQL
+_cache_df       = None        # cached DataFrame
+_cache_ts       = 0.0         # Unix timestamp of last successful load
+
+
+def _load_from_db() -> pd.DataFrame | None:
+    """Execute the full policy join query and return a DataFrame, or None on error."""
     db_host     = os.getenv('DB_HOST', 'localhost')
     db_user     = os.getenv('DB_USER', 'root')
     db_password = os.getenv('DB_PASSWORD', 'root')
     db_name     = os.getenv('DB_NAME', 'insurance_brokerage')
 
-    df = None
     try:
         from sqlalchemy import create_engine, text
         engine = create_engine(
@@ -18,9 +29,9 @@ def get_data():
             pool_pre_ping=True,
             connect_args={"connect_timeout": 10},
         )
-        
+
         query = """
-            SELECT 
+            SELECT
                 p.policy_number,
                 c.name as client_name,
                 c.client_type,
@@ -41,58 +52,88 @@ def get_data():
             LEFT JOIN products pr ON p.product_id = pr.product_id AND pr.is_active = 1
             LEFT JOIN carriers ca ON pr.carrier_id = ca.carrier_id AND ca.is_active = 1
             LEFT JOIN (
-                SELECT policy_id, SUM(quote_approved_amount) as claim_amount, MAX(status) as status 
-                FROM claims 
+                SELECT policy_id, SUM(quote_approved_amount) as claim_amount, MAX(status) as status
+                FROM claims
                 WHERE is_active = 1
                 GROUP BY policy_id
             ) cl ON p.policy_id = cl.policy_id
             LEFT JOIN (
-                SELECT policy_id, SUM(calculated_amount) as calculated_amount 
-                FROM sales_commissions 
+                SELECT policy_id, SUM(calculated_amount) as calculated_amount
+                FROM sales_commissions
                 WHERE is_active = 1
                 GROUP BY policy_id
             ) sc ON p.policy_id = sc.policy_id
             WHERE p.is_active = 1
         """
         with engine.connect() as conn:
-            # 1. Perform COUNT pre-check first
             try:
                 row_count = conn.execute(text("SELECT COUNT(*) FROM policies WHERE is_active = 1")).scalar()
                 print(f"[db] Database pre-check: {row_count} active policies found in database.")
             except Exception as count_err:
                 print(f"[db] Error performing count pre-check: {count_err}")
-                row_count = 0
-            
-            # 2. Execute full raw data query
+
             df = pd.read_sql(text(query), conn)
         print(f"[db] Loaded {len(df)} rows from MySQL insurance_brokerage schema.")
+        return df
+
     except Exception as e:
         print(f"[db] MySQL error: {e}")
-        print("[db] Falling back to CSV …")
+        return None
 
-    if df is None:
-        try:
-            script_dir = os.path.dirname(os.path.abspath(__file__))
-            csv_path = os.path.join(script_dir, "data", "broker_master_data.csv")
-            df = pd.read_csv(csv_path)
-            print(f"[db] Loaded {len(df)} rows from CSV fallback.")
-        except Exception as csv_e:
-            print(f"[db] CSV error: {csv_e}")
-            return pd.DataFrame()  
 
-    # --- Cast numerics ---
-    numeric_cols = ['premium_amount', 'claim_amount', 'commission_earned']
-    for col in numeric_cols:
+def _cast(df: pd.DataFrame) -> pd.DataFrame:
+    """Apply numeric and date coercions to a raw DataFrame."""
+    for col in ['premium_amount', 'claim_amount', 'commission_earned']:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
-            
-    # Dates
     if 'issue_date' in df.columns:
         df['issue_date'] = pd.to_datetime(df['issue_date'], errors='coerce')
     if 'expiry_date' in df.columns:
         df['expiry_date'] = pd.to_datetime(df['expiry_date'], errors='coerce')
-
     return df
 
-df_global = get_data()
 
+def get_data(force: bool = False) -> pd.DataFrame:
+    """
+    Return the live dataset.
+
+    Uses a 30-second TTL cache so that rapid tab switches don't each fire a
+    full MySQL round-trip, while still guaranteeing fresh data within 30 s of
+    any DB commit.  Call ``force_refresh()`` right after a commit to bust the
+    cache immediately.
+    """
+    global _cache_df, _cache_ts
+
+    now = time.monotonic()
+    if not force and _cache_df is not None and (now - _cache_ts) < _CACHE_TTL:
+        return _cache_df.copy()
+
+    df = _load_from_db()
+
+    if df is None:
+        # Fallback to bundled CSV
+        try:
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            csv_path   = os.path.join(script_dir, "data", "broker_master_data.csv")
+            df = pd.read_csv(csv_path)
+            print(f"[db] Loaded {len(df)} rows from CSV fallback.")
+        except Exception as csv_e:
+            print(f"[db] CSV error: {csv_e}")
+            return pd.DataFrame()
+
+    df = _cast(df)
+    _cache_df = df
+    _cache_ts = now
+    return df.copy()
+
+
+def force_refresh() -> pd.DataFrame:
+    """Bust the TTL cache, reload from MySQL, and update df_global in-process."""
+    global df_global
+    fresh = get_data(force=True)
+    df_global = fresh
+    return fresh
+
+
+# Warm the cache at import time (preserves startup behaviour)
+df_global = get_data()

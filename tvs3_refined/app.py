@@ -10,7 +10,7 @@ def find_loader(fullname):
         pass
     return None
 
-pkgutil.find_loader = find_loader
+setattr(pkgutil, "find_loader", find_loader)
 
 from dash_app import app
 from layouts import serve_layout

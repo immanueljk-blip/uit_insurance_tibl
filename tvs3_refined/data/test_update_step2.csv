@@ -1,2 +1,2 @@
 policy_number,client_name,client_type,carrier_name,category,sub_category,premium_amount,claim_amount,commission_earned,policy_status,issue_date,expiry_date,region,distribution_channel,claim_status
-POL-TEST-UPD,Varun Gupta,Corporate/B2B,Tata Aig,Motor,4W,24500,4200,2450,Cancelled,2026-06-01,2027-06-01,DL,Online,Approved
+POL-TEST-UPD,Varun Gupta,Corporate/B2B,Tata Aig,Motor,4W,25500,4200,2450,Cancelled,2026-06-01,2027-06-01,DL,Online,Approved
