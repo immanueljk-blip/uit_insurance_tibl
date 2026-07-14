@@ -1,0 +1,3 @@
+policy_number,client_name,client_type,carrier_name,category,sub_category,premium_amount,claim_amount,commission_earned,policy_status,issue_date,expiry_date,claim_status
+POL-2154411,Jagrati Kibe,Individual/B2C,Icici Lombard,Motor,Cv,18482.23,8500.0,1848.22,Active,2026-04-03,2027-04-03,Approved
+POL-42182755,Jagrati Kibe,Individual/B2C,United India,Motor,Cv,34335.37,12500.0,3433.53,Active,2025-12-09,2026-12-09,Settled

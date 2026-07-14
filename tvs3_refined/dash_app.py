@@ -13,8 +13,17 @@ app = dash.Dash(
 app.title = "MyTVS Insurance Analytics"
 server = app.server
 
+import os
 from flask_caching import Cache
-cache = Cache(app.server, config={
-    'CACHE_TYPE': 'SimpleCache',
-    'CACHE_DEFAULT_TIMEOUT': 300
-})
+
+cache_type = os.getenv('CACHE_TYPE', 'SimpleCache')
+cache_config = {
+    'CACHE_TYPE': cache_type,
+    'CACHE_DEFAULT_TIMEOUT': int(os.getenv('CACHE_DEFAULT_TIMEOUT', '300'))
+}
+if cache_type == 'RedisCache':
+    cache_config['CACHE_REDIS_URL'] = os.getenv('CACHE_REDIS_URL', 'redis://localhost:6379/0')
+elif cache_type == 'FileSystemCache':
+    cache_config['CACHE_DIR'] = os.getenv('CACHE_DIR', 'cache-directory')
+
+cache = Cache(app.server, config=cache_config)

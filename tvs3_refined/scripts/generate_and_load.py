@@ -57,17 +57,27 @@ def generate_mock_data():
             'phone': fake.phone_number()[:20],
             'address': fake.city(),
             'region_code': rc,
-            'region_name': rn
+            'region_name': rn,
+            'is_active': 1
         })
     df_clients = pd.DataFrame(clients_data)
 
     # 2. Carriers
     carriers = ['TATA AIG', 'ICICI Lombard', 'United India', 'New India Assurance', 'HDFC ERGO', 'Bajaj Allianz']
-    df_carriers = pd.DataFrame({'carrier_id': range(1, len(carriers) + 1), 'carrier_name': carriers})
+    df_carriers = pd.DataFrame({
+        'carrier_id': range(1, len(carriers) + 1),
+        'carrier_name': carriers,
+        'is_active': [1] * len(carriers)
+    })
 
     # 3. Backoffice Users
     users = ['arun.kumar', 'priya.sharma', 'rahul.verma', 'sneha.patel']
-    df_users = pd.DataFrame({'user_id': range(1, len(users) + 1), 'username': users, 'system_role': 'ITS System'})
+    df_users = pd.DataFrame({
+        'user_id': range(1, len(users) + 1),
+        'username': users,
+        'system_role': 'ITS System',
+        'is_active': [1] * len(users)
+    })
 
     # 4. Products
     products_data = []
@@ -86,7 +96,8 @@ def generate_mock_data():
                     'product_id': prod_id,
                     'carrier_id': carrier_id,
                     'category': cat,
-                    'sub_category': sub
+                    'sub_category': sub,
+                    'is_active': 1
                 })
                 prod_id += 1
     df_products = pd.DataFrame(products_data)
@@ -117,7 +128,8 @@ def generate_mock_data():
             'expiry_date': expiry_date,
             'premium_amount': round(random.uniform(5000, 50000), 2),
             'status': random.choice(['Active', 'Expired', 'Renewed', 'Cancelled']),
-            'distribution_channel': random.choice(['Direct', 'Broker', 'Agency', 'Online'])
+            'distribution_channel': random.choice(['Direct', 'Broker', 'Agency', 'Online']),
+            'is_active': 1
         })
     df_policies = pd.DataFrame(policies_data)
     
@@ -136,7 +148,8 @@ def generate_mock_data():
             'claim_number': f"CLM-{fake.unique.random_number(digits=7)}",
             'registered_date': reg_date,
             'quote_approved_amount': round(random.uniform(1000, 40000), 2),
-            'status': random.choice(['Registered', 'Under Review', 'Approved', 'Rejected', 'Settled'])
+            'status': random.choice(['Registered', 'Under Review', 'Approved', 'Rejected', 'Settled']),
+            'is_active': 1
         })
         claim_id += 1
     df_claims = pd.DataFrame(claims_data)
@@ -150,7 +163,8 @@ def generate_mock_data():
                 'rate_id': rate_id,
                 'category': cat,
                 'sub_category': sub,
-                'base_rate_percent': round(random.uniform(5.0, 15.0), 2)
+                'base_rate_percent': round(random.uniform(5.0, 15.0), 2),
+                'is_active': 1
             })
             rate_id += 1
     df_rates = pd.DataFrame(rates_data)
@@ -169,7 +183,8 @@ def generate_mock_data():
             'commission_id': comm_id,
             'policy_id': p['policy_id'],
             'calculated_amount': round(p['premium_amount'] * rate, 2),
-            'status': 'Received'
+            'status': 'Received',
+            'is_active': 1
         })
         comm_id += 1
     df_comm = pd.DataFrame(comm_data)
@@ -338,7 +353,8 @@ def load_live_kaggle_data():
             'phone': f"+91 {9800000000 + client_id}",
             'address': f"{r_name} Area",
             'region_code': r_code,
-            'region_name': r_name
+            'region_name': r_name,
+            'is_active': 1
         })
         client_name_to_id[name] = client_id
         
@@ -353,14 +369,16 @@ def load_live_kaggle_data():
         carrier_id = idx + 1
         carriers_list.append({
             'carrier_id': carrier_id,
-            'carrier_name': cname
+            'carrier_name': cname,
+            'is_active': 1
         })
         carrier_name_to_id[cname] = carrier_id
         
     unassigned_id = len(unique_carriers) + 1
     carriers_list.append({
         'carrier_id': unassigned_id,
-        'carrier_name': 'Unassigned'
+        'carrier_name': 'Unassigned',
+        'is_active': 1
     })
     carrier_name_to_id['Unassigned'] = unassigned_id
     
@@ -368,7 +386,12 @@ def load_live_kaggle_data():
 
     # 3.3 Backoffice Users
     users = ['arun.kumar', 'priya.sharma', 'rahul.verma', 'sneha.patel']
-    df_users = pd.DataFrame({'user_id': range(1, len(users) + 1), 'username': users, 'system_role': 'ITS System'})
+    df_users = pd.DataFrame({
+        'user_id': range(1, len(users) + 1),
+        'username': users,
+        'system_role': 'ITS System',
+        'is_active': [1] * len(users)
+    })
     user_ids = list(range(1, len(users) + 1))
 
     # 3.4 Products
@@ -389,7 +412,8 @@ def load_live_kaggle_data():
             'product_id': product_id,
             'carrier_id': carrier_id,
             'category': cat,
-            'sub_category': sub
+            'sub_category': sub,
+            'is_active': 1
         })
         prod_lookup[(row.carrier_name, cat, sub)] = product_id
         
@@ -429,7 +453,8 @@ def load_live_kaggle_data():
             'expiry_date': row.expiry_date_str,
             'premium_amount': float(row.premium_amount),
             'status': row.mapped_status,
-            'distribution_channel': row.distribution_channel if pd.notna(row.distribution_channel) else 'Online'
+            'distribution_channel': row.distribution_channel if pd.notna(row.distribution_channel) else 'Online',
+            'is_active': 1
         })
         policy_lookup[p_num] = policy_id
         
@@ -458,7 +483,8 @@ def load_live_kaggle_data():
                 'claim_number': f"CLM-{300000 + claim_id}",
                 'registered_date': row.issue_date_str,
                 'quote_approved_amount': claim_amt,
-                'status': c_status
+                'status': c_status,
+                'is_active': 1
             })
             claim_id += 1
             
@@ -473,7 +499,8 @@ def load_live_kaggle_data():
                 'rate_id': rate_id,
                 'category': cat,
                 'sub_category': sub,
-                'base_rate_percent': 10.0
+                'base_rate_percent': 10.0,
+                'is_active': 1
             })
             rate_id += 1
     df_rates = pd.DataFrame(rates_list)
@@ -490,7 +517,8 @@ def load_live_kaggle_data():
             'commission_id': comm_id,
             'policy_id': policy_id,
             'calculated_amount': comm_amt,
-            'status': 'Received'
+            'status': 'Received',
+            'is_active': 1
         })
         comm_id += 1
         
@@ -503,6 +531,26 @@ def load_live_kaggle_data():
             df_rates.to_sql('commission_rates', con=conn, if_exists='append', index=False)
         if not df_comm.empty:
             df_comm.to_sql('sales_commissions', con=conn, if_exists='append', index=False)
+
+    print("[loader] Applying database schema indexes and keys...")
+    with engine.connect() as conn:
+        commands = [
+            "ALTER TABLE clients MODIFY COLUMN client_id INT, ADD PRIMARY KEY (client_id), ADD INDEX idx_clients_active (is_active);",
+            "ALTER TABLE carriers MODIFY COLUMN carrier_id INT, ADD PRIMARY KEY (carrier_id), ADD INDEX idx_carriers_active (is_active);",
+            "ALTER TABLE products MODIFY COLUMN product_id INT, ADD PRIMARY KEY (product_id), ADD INDEX idx_products_active (is_active), ADD INDEX idx_products_carrier (carrier_id);",
+            "ALTER TABLE policies MODIFY COLUMN policy_id INT, ADD PRIMARY KEY (policy_id), ADD INDEX idx_policies_client (client_id), ADD INDEX idx_policies_product (product_id), ADD INDEX idx_policies_active (is_active);",
+            "ALTER TABLE policies MODIFY COLUMN policy_number VARCHAR(255), ADD INDEX idx_policies_number (policy_number);",
+            "ALTER TABLE claims MODIFY COLUMN claim_id INT, ADD PRIMARY KEY (claim_id), ADD INDEX idx_claims_policy (policy_id), ADD INDEX idx_claims_active (is_active);",
+            "ALTER TABLE sales_commissions MODIFY COLUMN commission_id INT, ADD PRIMARY KEY (commission_id), ADD INDEX idx_commissions_policy (policy_id), ADD INDEX idx_commissions_active (is_active);",
+            "ALTER TABLE backoffice_users MODIFY COLUMN user_id INT, ADD PRIMARY KEY (user_id), ADD INDEX idx_backoffice_users_active (is_active);",
+            "ALTER TABLE commission_rates MODIFY COLUMN rate_id INT, ADD PRIMARY KEY (rate_id), ADD INDEX idx_commission_rates_active (is_active);"
+        ]
+        for cmd in commands:
+            try:
+                conn.execute(text(cmd))
+                conn.execute(text("COMMIT;"))
+            except Exception as e:
+                print(f"[loader] Index statement skipped/failed: {e}")
 
     print(f"[loader] Successfully loaded {len(df_policies)} records from live Kaggle dataset into MySQL.")
 

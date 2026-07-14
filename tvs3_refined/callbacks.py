@@ -8,7 +8,7 @@ import pandas as pd
 import io
 import base64
 from charts import (tab1, tab2, tab2b, tab3, tab3b, tab4b, tab5, tab5b,
-                    tab6, tab6b, build_tab6b_content, tab7, tab8, tab9, tab10, tab11, tab12, tab13, tab14, tab15, build_chat_bubbles, build_report_panel,
+                    tab6, tab6b, build_tab6b_content, tab7, tab8, tab9, tab10, tab11, tab12, tab13, tab13b, tab14, tab15, build_chat_bubbles, build_report_panel,
                     _cfg, _ax, chart_box, kpi_card, format_currency, section_title,
                     build_lead_pivot, build_nonconversion_table, build_followup_table,
                     _lt_kpi_bar, _lt_kpi_and_funnel_panel, _map_stages, STAGE_ORDER)
@@ -88,15 +88,33 @@ def parse_contents(contents, filename):
 
 def get_current_df(stored_data):
     if stored_data is not None:
-        df = pd.DataFrame(stored_data)
-        if 'issue_date' in df.columns:
-            df['issue_date'] = pd.to_datetime(df['issue_date'], errors='coerce')
-        if 'expiry_date' in df.columns:
-            df['expiry_date'] = pd.to_datetime(df['expiry_date'], errors='coerce')
-        return df
+        if isinstance(stored_data, str) and stored_data.startswith("cached_df:"):
+            cached_df = cache.get(stored_data)
+            if cached_df is not None:
+                return cached_df
+        if isinstance(stored_data, list):
+            df = pd.DataFrame(stored_data)
+            if 'issue_date' in df.columns:
+                df['issue_date'] = pd.to_datetime(df['issue_date'], errors='coerce')
+            if 'expiry_date' in df.columns:
+                df['expiry_date'] = pd.to_datetime(df['expiry_date'], errors='coerce')
+            return df
     # Use the in-memory global — fast for tab renders.
     # db.df_global is reloaded via db.force_refresh() after every commit.
-    return db.df_global.copy()
+    if db.df_global is None:
+        return db.get_data()
+    return db.df_global
+
+
+def get_raw_df(raw_data):
+    if raw_data is not None:
+        if isinstance(raw_data, str) and raw_data.startswith("cached_raw:"):
+            cached_df = cache.get(raw_data)
+            if cached_df is not None:
+                return cached_df
+        if isinstance(raw_data, list):
+            return pd.DataFrame(raw_data)
+    return None
 
 
 # ── Upload / Clear & Validation Engine ──────────────────────────────────────────
@@ -379,12 +397,14 @@ def handle_upload(contents, clear_clicks, filename):
             columns_lower = [str(c).lower().strip() for c in df.columns]
             missing_cols = [col for col in required_cols if col.lower() not in columns_lower]
             
+            raw_key = f"cached_raw:{filename}"
             if missing_cols:
                 suggestions = suggest_mappings(df.columns)
                 if len(suggestions) == len(missing_cols):
                     # We can suggest mapping for all missing columns!
                     # Do not show modal, store suggestions and stage raw data
-                    return df.to_dict('records'), filename, f"Mapping Required · {short}", None, False, None, suggestions
+                    cache.set(raw_key, df, timeout=3600)
+                    return raw_key, filename, f"Mapping Required · {short}", None, False, None, suggestions
                 else:
                     # Some missing columns have no suggestion, show modal
                     unmapped_cols = [c for c in missing_cols if c not in suggestions]
@@ -402,7 +422,8 @@ def handle_upload(contents, clear_clicks, filename):
                             ], style={"display": "flex", "flexWrap": "wrap", "gap": "4px", "marginTop": "8px"})
                         ], style={"background": "#FFF5F5", "border": "1.5px solid #FCA5A5", "padding": "12px", "borderRadius": "8px", "marginTop": "12px"})
                     ])
-                    return df.to_dict('records'), filename, f"Schema Error · {short}", None, True, err_body, None
+                    cache.set(raw_key, df, timeout=3600)
+                    return raw_key, filename, f"Schema Error · {short}", None, True, err_body, None
             
             # If no missing columns, perform normal validation
             missing_cols, field_errors, cell_errors = validate_dataframe(df)
@@ -420,7 +441,8 @@ def handle_upload(contents, clear_clicks, filename):
                         "borderRadius": "8px", "marginTop": "12px", "maxHeight": "300px", "overflowY": "auto"
                     })
                 ])
-                return df.to_dict('records'), filename, f"Validation Error · {short}", None, True, err_body, None
+                cache.set(raw_key, df, timeout=3600)
+                return raw_key, filename, f"Validation Error · {short}", None, True, err_body, None
             
             # Standard rename mapping for standard casing
             expected_cols = [
@@ -449,7 +471,10 @@ def handle_upload(contents, clear_clicks, filename):
                 if col not in ['policy_number', 'client_name', 'issue_date', 'expiry_date']:
                     mapped_df[col] = mapped_df[col].astype(str).str.strip().str.title()
             
-            return mapped_df.to_dict('records'), filename, f"Staged · {short}", mapped_df.to_dict('records'), False, None, None
+            mapped_key = f"cached_df:{filename}"
+            cache.set(raw_key, mapped_df, timeout=3600)
+            cache.set(mapped_key, mapped_df, timeout=3600)
+            return raw_key, filename, f"Staged · {short}", mapped_key, False, None, None
             
         parse_err_body = html.Div([
             html.P("The uploaded file could not be parsed.", style={"fontWeight": "bold", "color": "#EF4444"}),
@@ -476,7 +501,10 @@ def apply_column_mapping(n_clicks, raw_data, filename, dropdown_values, dropdown
     if not n_clicks or not raw_data:
         raise dash.exceptions.PreventUpdate
         
-    df = pd.DataFrame(raw_data)
+    df = get_raw_df(raw_data)
+    if df is None:
+        raise dash.exceptions.PreventUpdate
+        
     short = filename[:18] + "…" if len(filename) > 20 else filename
     
     # Construct renaming dictionary
@@ -533,7 +561,9 @@ def apply_column_mapping(n_clicks, raw_data, filename, dropdown_values, dropdown
             mapped_df[col] = mapped_df[col].astype(str).str.strip().str.title()
             
     # Stage the verified data, clear suggestions, close modal
-    return mapped_df.to_dict('records'), None, False, None, f"Staged · {short}"
+    mapped_key = f"cached_df:{filename}"
+    cache.set(mapped_key, mapped_df, timeout=3600)
+    return mapped_key, None, False, None, f"Staged · {short}"
 
 
 # ── Close Schema Validation Modal ─────────────────────────────────────────────
@@ -691,12 +721,10 @@ def render_tab(tab, stored_data, refresh_data, filename, raw_data, mapping_store
         tab = "tab-1"
         
     # Write to access audit log
-    os.makedirs('logs', exist_ok=True)
     timestamp = pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')
-    log_line = f"[{timestamp}] User accessed tab: {tab}\n"
+    log_line = f"[{timestamp}] User accessed tab: {tab}"
     try:
-        with open(os.path.join('logs', 'audit_access.log'), 'a') as f:
-            f.write(log_line)
+        db.get_rotating_logger("audit_access", "logs/audit_access.log").info(log_line)
     except Exception as e:
         print(f"[audit] Error writing tab access log: {e}")
         
@@ -711,7 +739,7 @@ def render_tab(tab, stored_data, refresh_data, filename, raw_data, mapping_store
             "tab-4b": tab4b, "tab-5": tab5, "tab-5b": tab5b,
             "tab-6": tab6, "tab-6b": tab6b, "tab-7": tab7, "tab-8": tab8,
             "tab-9": tab9, "tab-10": tab10, "tab-11": tab11, "tab-12": tab12,
-            "tab-13": tab13, "tab-14": tab14, "tab-15": tab15,
+            "tab-13": tab13, "tab-13b": tab13b, "tab-14": tab14, "tab-15": tab15,
         }
         fn = tab_map.get(tab)
         if fn:
@@ -720,7 +748,9 @@ def render_tab(tab, stored_data, refresh_data, filename, raw_data, mapping_store
                 if stored_data is not None:
                     df_to_use = dff
                 elif raw_data is not None:
-                    df_to_use = pd.DataFrame(raw_data)
+                    df_to_use = get_raw_df(raw_data)
+                    if df_to_use is None:
+                        df_to_use = dff
                 else:
                     df_to_use = dff
                 
@@ -1201,7 +1231,8 @@ import db_writer
      Output('uploaded-data-store', 'data', allow_duplicate=True),
      Output('refresh-trigger', 'data', allow_duplicate=True),
      Output('ingestion-result-modal', 'is_open'),
-     Output('ingestion-result-modal-body', 'children')],
+     Output('ingestion-result-modal-body', 'children'),
+     Output('ingestion-status-local', 'children')],
     Input('btn-verify-commit', 'n_clicks'),
     [State('uploaded-data-store', 'data'),
      State('uploaded-filename-store', 'data')],
@@ -1209,26 +1240,32 @@ import db_writer
 )
 def verify_and_commit_data(n_clicks, mapped_data, filename):
     if not n_clicks or mapped_data is None:
-        return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+        return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
         
     try:
-        df = pd.DataFrame(mapped_data)
+        df = get_current_df(mapped_data)
         
         # 1. Ingest to MySQL DB via relational pipeline
         summary = db_writer.write_df_to_mysql(df)
         
         # Write to ingestion audit log on success
-        os.makedirs('logs', exist_ok=True)
         timestamp_log = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        log_line = f"[{timestamp_log}] User loaded data. File: {filename}, Rows: {len(df)}, Status: Ingested to Database successfully.\n"
+        log_line = f"[{timestamp_log}] User loaded data. File: {filename}, Rows: {len(df)}, Status: Ingested to Database successfully."
         try:
-            with open(os.path.join('logs', 'audit_ingestion.log'), 'a') as f:
-                f.write(log_line)
+            db.get_rotating_logger("audit_ingestion", "logs/audit_ingestion.log").info(log_line)
         except Exception as log_err:
             print(f"[audit] Error writing audit ingestion log: {log_err}")
         
         # 2. Force reload memory master data (busts the TTL cache immediately)
         db.force_refresh()
+        
+        # 2b. Clean up server-side uploaded file cache to free up memory
+        if filename:
+            try:
+                cache.delete(f"cached_raw:{filename}")
+                cache.delete(f"cached_df:{filename}")
+            except Exception as cache_err:
+                print(f"[cache] Error deleting ingested dataset cache: {cache_err}")
         
         # 3. Save full backup of the entire live dataset to revisions/
         os.makedirs('revisions', exist_ok=True)
@@ -1329,22 +1366,20 @@ def verify_and_commit_data(n_clicks, mapped_data, filename):
             modal_body.children.append(updates_section)
         
         # 4. Reset UI state & trigger full dashboard updates
-        return None, None, "Live DB", None, n_clicks, True, modal_body
+        return None, None, "Live DB", None, n_clicks, True, modal_body, ""
         
     except Exception as e:
         print(f"[commit] Error during commit: {e}")
         # Write to ingestion audit log on failure
-        os.makedirs('logs', exist_ok=True)
         timestamp_log = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        log_line = f"[{timestamp_log}] User loaded data. File: {filename}, Status: Ingestion Failed with error: {e}.\n"
+        log_line = f"[{timestamp_log}] User loaded data. File: {filename}, Status: Ingestion Failed with error: {e}."
         try:
-            with open(os.path.join('logs', 'audit_ingestion.log'), 'a') as f:
-                f.write(log_line)
+            db.get_rotating_logger("audit_ingestion", "logs/audit_ingestion.log").info(log_line)
         except Exception as log_err:
             print(f"[audit] Error writing audit ingestion log: {log_err}")
         
         err_msg = html.Div(f"⚠ Commit Error: {e}", style={"color": "#EF4444", "fontWeight": "bold"})
-        return dash.no_update, dash.no_update, f"⚠ Commit Error: {e}", dash.no_update, dash.no_update, True, err_msg
+        return dash.no_update, dash.no_update, f"⚠ Commit Error: {e}", dash.no_update, dash.no_update, True, err_msg, ""
 
 
 @app.callback(
@@ -1408,14 +1443,12 @@ def update_claim_status(n_clicks, policy_number, new_status, current_data):
                 pass
                 
         # 3. Log the status change history
-        os.makedirs('logs', exist_ok=True)
         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        log_line = f"[{timestamp}] Claim {claim_number}: Status changed from '{old_status}' to '{new_status}' by System Admin.\n"
-        with open(os.path.join('logs', 'claim_status_history.log'), 'a') as f:
-            f.write(log_line)
+        log_line = f"[{timestamp}] Claim {claim_number}: Status changed from '{old_status}' to '{new_status}' by System Admin."
+        db.get_rotating_logger("claim_status_history", "logs/claim_status_history.log").info(log_line)
             
         # 4. Force reload memory master data
-        db.df_global = db.get_data()
+        db.force_refresh()
         
         # 5. Update the local datatable data inline
         updated_data = []
@@ -1816,11 +1849,62 @@ import uuid
 # Global progress store
 chat_progress = {}
 
-def run_chat_background(user_query, session_id):
+def run_chat_background(user_query, session_id, history=None):
     try:
+        # Check Comparison Mode
+        comparison = chat_helper.detect_comparison(user_query)
+        if comparison:
+            entity_a, entity_b = comparison
+            chat_progress[session_id] = {"status": f"Comparing '{entity_a}' vs '{entity_b}'...", "complete": False, "result": None}
+            res = chat_helper.run_comparison(entity_a, entity_b)
+            if res.get("success"):
+                res_dict = {
+                    "success": True,
+                    "error": None,
+                    "sql": res.get("sql"),
+                    "data": res.get("data"),
+                    "answer": res.get("answer"),
+                    "user_query": user_query,
+                    "is_comparison": True,
+                    "entity_a": res.get("entity_a"),
+                    "entity_b": res.get("entity_b")
+                }
+            else:
+                res_dict = {
+                    "success": False,
+                    "error": res.get("error"),
+                    "sql": None,
+                    "data": None,
+                    "answer": None
+                }
+            chat_progress[session_id] = {
+                "status": "Done",
+                "complete": True,
+                "result": res_dict
+            }
+            return
+
+        # Prepare Conversation Context for normal queries (multi-turn memory)
+        context = []
+        if history:
+            i = 0
+            while i < len(history) - 1:
+                msg_u = history[i]
+                msg_a = history[i+1]
+                if msg_u.get("sender") == "user" and msg_a.get("sender") == "ai" and not msg_a.get("is_placeholder"):
+                    if msg_a.get("sql") and msg_a.get("data") is not None:
+                        context.append({
+                            "question": msg_u.get("text", ""),
+                            "sql": msg_a.get("sql", ""),
+                            "summary": msg_a.get("text", "")
+                        })
+                    i += 2
+                else:
+                    i += 1
+
         # Step 1: SQL Generation
         chat_progress[session_id] = {"status": "Generating SQL query...", "complete": False, "result": None}
-        sql = chat_helper.generate_sql(user_query)
+        sql = chat_helper.generate_sql(user_query, conversation_context=context)
         if not sql:
             chat_progress[session_id] = {
                 "status": "Done",
@@ -1865,7 +1949,9 @@ def run_chat_background(user_query, session_id):
                 "error": None,
                 "sql": sql,
                 "data": df.to_dict('records') if df is not None else None,
-                "answer": answer
+                "answer": answer,
+                "user_query": user_query,
+                "is_comparison": False
             }
         }
     except Exception as e:
@@ -1900,13 +1986,21 @@ def update_chat_ui(history):
      Output("chat-status-interval", "n_intervals")],
     [Input("btn-send-chat", "n_clicks"),
      Input("btn-clear-chat", "n_clicks"),
-     Input({"type": "chat-suggestion", "index": ALL}, "n_clicks")],
+     Input({"type": "chat-suggestion", "index": ALL}, "n_clicks"),
+     Input({"type": "chat-followup", "index": ALL}, "n_clicks")],
     [State("chat-user-input", "value"),
      State("chat-history-store", "data")],
     prevent_initial_call=True
 )
-def handle_chat_actions(send_clicks, clear_clicks, suggestion_clicks, user_input, history):
+def handle_chat_actions(send_clicks, clear_clicks, suggestion_clicks, followup_clicks, user_input, history):
     triggered = ctx.triggered_id
+    if not triggered:
+        raise dash.exceptions.PreventUpdate
+        
+    trigger_val = ctx.triggered[0].get("value") if ctx.triggered else None
+    if trigger_val is None or trigger_val == 0:
+        raise dash.exceptions.PreventUpdate
+        
     if history is None:
         history = []
         
@@ -1932,6 +2026,21 @@ def handle_chat_actions(send_clicks, clear_clicks, suggestion_clicks, user_input
             if suggestion_clicks and idx < len(suggestion_clicks) and suggestion_clicks[idx]:
                 user_msg = suggestions[idx]
 
+    elif isinstance(triggered, dict) and triggered.get("type") == "chat-followup":
+        idx_str = triggered.get("index")
+        if idx_str and "-" in idx_str:
+            try:
+                msg_idx, chip_idx = map(int, idx_str.split("-"))
+                if history and 0 <= msg_idx < len(history):
+                    prev_msg = history[msg_idx]
+                    prev_query = prev_msg.get("user_query") or prev_msg.get("text", "")
+                    from charts import _get_followup_suggestions
+                    suggestions = _get_followup_suggestions(prev_query)
+                    if 0 <= chip_idx < len(suggestions):
+                        user_msg = suggestions[chip_idx]
+            except Exception as e:
+                print(f"[callbacks] Error resolving followup chip: {e}")
+
     if user_msg:
         history.append({"sender": "user", "text": user_msg})
         history.append({"sender": "ai", "text": "Connecting to Gemini...", "is_placeholder": True})
@@ -1939,7 +2048,7 @@ def handle_chat_actions(send_clicks, clear_clicks, suggestion_clicks, user_input
         session_id = str(uuid.uuid4())
         chat_progress[session_id] = {"status": "Initializing AI engine...", "complete": False, "result": None}
         
-        t = threading.Thread(target=run_chat_background, args=(user_msg, session_id))
+        t = threading.Thread(target=run_chat_background, args=(user_msg, session_id, history[:-2]))
         t.daemon = True
         t.start()
         
@@ -1975,7 +2084,11 @@ def poll_chat_status(n_intervals, session_id, history):
                     "sender": "ai",
                     "text": res.get("answer"),
                     "sql": res.get("sql"),
-                    "data": res.get("data")
+                    "data": res.get("data"),
+                    "user_query": res.get("user_query"),
+                    "is_comparison": res.get("is_comparison", False),
+                    "entity_a": res.get("entity_a"),
+                    "entity_b": res.get("entity_b")
                 }
             else:
                 history[-1] = {
@@ -1986,6 +2099,26 @@ def poll_chat_status(n_intervals, session_id, history):
             chat_progress.pop(session_id, None)
             return history, True
             
+@app.callback(
+    Output("chat-csv-download", "data"),
+    Input({"type": "chat-download-csv", "index": ALL}, "n_clicks"),
+    State("chat-history-store", "data"),
+    prevent_initial_call=True
+)
+def download_chat_csv(n_clicks, history):
+    if not any(n_clicks):
+        raise dash.exceptions.PreventUpdate
+        
+    triggered = ctx.triggered_id
+    if isinstance(triggered, dict) and triggered.get("type") == "chat-download-csv":
+        msg_idx = triggered.get("index")
+        if history and 0 <= msg_idx < len(history):
+            msg = history[msg_idx]
+            data = msg.get("data")
+            if data:
+                df_export = pd.DataFrame(data)
+                return dcc.send_data_frame(df_export.to_csv, f"chat_data_export_{msg_idx}.csv", index=False)
+                
     raise dash.exceptions.PreventUpdate
 
 
@@ -1994,7 +2127,7 @@ def poll_chat_status(n_intervals, session_id, history):
     Input("btn-download-pdf", "n_clicks"),
     [State("chat-history-store", "data"),
      State("uploaded-data-store", "data"),
-     State("pdf-executive-notes", "value")],
+     State("pdf-executive-notes-store", "data")],
     prevent_initial_call=True
 )
 def download_pdf_report(n_clicks, history, uploaded_data, exec_notes):
@@ -2003,3 +2136,204 @@ def download_pdf_report(n_clicks, history, uploaded_data, exec_notes):
     df = get_current_df(uploaded_data)
     pdf_bytes = report_helper.generate_session_pdf(history or [], df, exec_notes=exec_notes)
     return dcc.send_bytes(pdf_bytes, filename=f"tvs_ai_report_{dt_datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf")
+
+
+@app.callback(
+    Output("pdf-executive-notes-store", "data"),
+    Input("pdf-executive-notes", "value"),
+    prevent_initial_call=True
+)
+def save_notes_to_store(value):
+    return value or ""
+
+
+@app.callback(
+    Output("pdf-executive-notes", "value"),
+    Input("pdf-executive-notes", "id"),
+    State("pdf-executive-notes-store", "data")
+)
+def load_notes_from_store(dummy_id, stored_data):
+    return stored_data or ""
+
+
+# ── Rewind Module (Data Versioning & Rollback) Callbacks ────────────────────────
+
+@app.callback(
+    [Output('rewind-history-table', 'data'),
+     Output('rewind-kpi-revisions-val', 'children'),
+     Output('rewind-kpi-eligible-val', 'children'),
+     Output('rewind-kpi-activity-val', 'children')],
+    [Input('tab-selector', 'value'),
+     Input('btn-refresh-rewind', 'n_clicks'),
+     Input('rollback-success-modal', 'is_open')]
+)
+def populate_revision_history(tab, n_clicks, success_modal_open):
+    if tab != "tab-13b":
+        return dash.no_update, dash.no_update, dash.no_update, dash.no_update
+        
+    revisions_dir = 'revisions'
+    if not os.path.exists(revisions_dir):
+        os.makedirs(revisions_dir, exist_ok=True)
+        
+    files = [f for f in os.listdir(revisions_dir) if f.startswith('dataset_rev_') and f.endswith('.csv')]
+    files.sort(reverse=True)
+    
+    table_data = []
+    total_revisions = len(files)
+    eligible_count = 0
+    last_activity = "N/A"
+    
+    now = dt_datetime.now()
+    
+    for idx, f in enumerate(files):
+        file_path = os.path.join(revisions_dir, f)
+        size_kb = round(os.path.getsize(file_path) / 1024, 1)
+        
+        try:
+            clean_name = f.replace("dataset_rev_", "")
+            date_part = clean_name[:10]
+            time_part = clean_name[11:19].replace("-", ":")
+            timestamp_str = f"{date_part} {time_part}"
+            file_dt = dt_datetime.strptime(timestamp_str, '%Y-%m-%d %H:%M:%S')
+            
+            time_diff = now - file_dt
+            is_eligible = time_diff.total_seconds() <= (4 * 3600) and time_diff.total_seconds() >= 0
+        except Exception:
+            timestamp_str = "Unknown"
+            is_eligible = False
+            file_dt = None
+            
+        if file_dt and last_activity == "N/A":
+            last_activity = file_dt.strftime('%d-%b %H:%M')
+            
+        if idx == 0:
+            status = "🟢 Current State"
+            action = "Current Active"
+        else:
+            if "pre_rollback" in f:
+                status = "🛡️ Safety Backup"
+            else:
+                status = "Eligible Restore Point"
+            action = "↩️ Restore State"
+            if is_eligible:
+                eligible_count += 1
+                
+        table_data.append({
+            'revision_id': len(files) - idx,
+            'filename': f,
+            'timestamp': timestamp_str,
+            'size': size_kb,
+            'status': status,
+            'actions': action
+        })
+        
+    return table_data, str(total_revisions), f"{eligible_count} active", last_activity
+
+
+@app.callback(
+    [Output('rollback-modal', 'is_open'),
+     Output('rollback-modal-body', 'children'),
+     Output('selected-revision-store', 'data')],
+    [Input('rewind-history-table', 'active_cell'),
+     Input('btn-cancel-rollback', 'n_clicks')],
+    [State('rewind-history-table', 'data')],
+    prevent_initial_call=True
+)
+def handle_history_click(active_cell, cancel_clicks, table_data):
+    trigger_id = ctx.triggered_id
+    if trigger_id == 'btn-cancel-rollback':
+        return False, dash.no_update, dash.no_update
+        
+    if not active_cell or active_cell.get('column_id') != 'actions':
+        return dash.no_update, dash.no_update, dash.no_update
+        
+    row_idx = active_cell['row']
+    row_data = table_data[row_idx]
+    filename = row_data['filename']
+    timestamp = row_data['timestamp']
+    
+    if row_data['status'] == "🟢 Current State":
+        return False, dash.no_update, dash.no_update
+        
+    modal_body = html.Div([
+        html.P([
+            html.Span("WARNING: ", style={"fontWeight": "bold", "color": TVS_ORANGE}),
+            "You are about to roll back the database state to the snapshot taken on ",
+            html.Span(f"{timestamp}", style={"fontWeight": "bold"}),
+            f" (from backup file: {filename})."
+        ]),
+        html.P("This will delete all current records and replace them with the state of the database at that time. This operation cannot be undone.", style={"color": "#EF4444", "fontWeight": "600"}),
+        html.P("To safeguard your data, a new backup of the current database state will be saved automatically prior to rolling back, so you can revert this rollback if needed.", style={"fontSize": "11px", "color": "#6B7280"})
+    ])
+    
+    return True, modal_body, filename
+
+
+@app.callback(
+    [Output('rollback-modal', 'is_open', allow_duplicate=True),
+     Output('rollback-success-modal', 'is_open'),
+     Output('rollback-success-modal-body', 'children'),
+     Output('refresh-trigger', 'data', allow_duplicate=True)],
+    Input('btn-confirm-rollback', 'n_clicks'),
+    State('selected-revision-store', 'data'),
+    prevent_initial_call=True
+)
+def execute_rollback(n_clicks, filename):
+    if not n_clicks or not filename:
+        return dash.no_update, dash.no_update, dash.no_update, dash.no_update
+        
+    try:
+        # 1. Save backup of CURRENT active state before restoring (safety mechanism)
+        os.makedirs('revisions', exist_ok=True)
+        cur_time = dt_datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+        safety_backup_path = os.path.join('revisions', f"dataset_rev_{cur_time}_pre_rollback.csv")
+        
+        current_df = db.get_data(force=True)
+        current_df.to_csv(safety_backup_path, index=False)
+        print(f"[rollback] Created pre-rollback safety backup at {safety_backup_path}")
+        
+        # 2. Perform rollback
+        import db_writer
+        target_path = os.path.join('revisions', filename)
+        summary = db_writer.rollback_to_csv(target_path, filename)
+        
+        # 3. Bust cache and refresh global master data
+        db.force_refresh()
+        
+        success_message = html.Div([
+            html.P("Database successfully rolled back!", style={"color": "#047857", "fontWeight": "bold", "fontSize": "15px"}),
+            html.P([
+                "Target state: ",
+                html.Span(f"{filename}", style={"fontWeight": "bold"}),
+                f" has been restored. Re-ingested {summary.get('appended_count', 0)} policies into MySQL."
+            ]),
+            html.P([
+                "A safety backup of your pre-rollback state was saved as: ",
+                html.Span(f"dataset_rev_{cur_time}_pre_rollback.csv", style={"fontStyle": "italic", "color": "#4B5563"})
+            ], style={"fontSize": "11px", "marginTop": "10px"})
+        ])
+        
+        trigger_val = (n_clicks or 0) + 1
+        
+        return False, True, success_message, trigger_val
+        
+    except Exception as err:
+        print(f"[rollback] Error executing rollback: {err}")
+        traceback.print_exc()
+        error_message = html.Div([
+            html.P("Error executing database rollback:", style={"color": "#EF4444", "fontWeight": "bold"}),
+            html.Pre(f"{err}", style={"backgroundColor": "#FEE2E2", "padding": "10px", "borderRadius": "4px", "fontSize": "11px"})
+        ])
+        return False, True, error_message, dash.no_update
+
+
+@app.callback(
+    Output('rollback-success-modal', 'is_open', allow_duplicate=True),
+    Input('btn-close-rollback-success', 'n_clicks'),
+    prevent_initial_call=True
+)
+def close_success_modal(n_clicks):
+    if n_clicks:
+        return False
+    return dash.no_update
+

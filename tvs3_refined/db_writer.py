@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 from sqlalchemy import create_engine, text
 from dotenv import load_dotenv
+import db
 
 load_dotenv()
 
@@ -14,7 +15,7 @@ def get_engine():
     db_user = os.getenv('DB_USER', 'root')
     db_password = os.getenv('DB_PASSWORD', 'root')
     db_name = os.getenv('DB_NAME', 'insurance_brokerage')
-    return create_engine(f"mysql+pymysql://{db_user}:{db_password}@{db_host}/{db_name}")
+    return create_engine(f"mysql+mysqldb://{db_user}:{db_password}@{db_host}/{db_name}")
 
 def write_df_to_mysql(df):
     """
@@ -217,6 +218,14 @@ def write_df_to_mysql(df):
     new_commissions_by_pid = {}
     new_claims_by_pid = {}
 
+    # Lists to buffer updates and audits for bulk batch operation
+    client_updates = []
+    policy_updates = []
+    commission_updates = []
+    claim_updates = []
+    audit_claim_status_history_inserts = []
+    audit_dataset_updates_inserts = []
+
     print("[db_writer] Processing rows incrementally...")
     for row in df.itertuples():
         p_num = str(row.policy_number).strip()
@@ -264,12 +273,13 @@ def write_df_to_mysql(df):
                     staged_c['region_name'] = r_name
                     staged_c['address'] = f"{r_name} Area"
                 else:
-                    with engine.connect() as conn:
-                        conn.execute(
-                            text("UPDATE clients SET client_type = :c_type, region_code = :r_code, region_name = :r_name, address = :address WHERE client_id = :client_id"),
-                            {"c_type": c_type, "r_code": r_code, "r_name": r_name, "address": f"{r_name} Area", "client_id": client_id}
-                        )
-                        conn.execute(text("COMMIT;"))
+                    client_updates.append({
+                        "c_type": c_type,
+                        "r_code": r_code,
+                        "r_name": r_name,
+                        "address": f"{r_name} Area",
+                        "client_id": client_id
+                    })
                 
                 new_cl_detail = {
                     'client_id': client_id,
@@ -281,12 +291,10 @@ def write_df_to_mysql(df):
                 }
                 existing_clients_details[client_id] = pd.Series(new_cl_detail)  # type: ignore
                 
-                os.makedirs('logs', exist_ok=True)
                 timestamp = pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')
                 for change in client_changes:
-                    log_line = f"[{timestamp}] Client '{c_name}' (ID: {client_id}): {change}.\n"
-                    with open(os.path.join('logs', 'dataset_updates.log'), 'a') as f:
-                        f.write(log_line)
+                    log_line = f"[{timestamp}] Client '{c_name}' (ID: {client_id}): {change}."
+                    db.get_rotating_logger("dataset_updates", "logs/dataset_updates.log").info(log_line)
                     print(f"[db_writer] Client '{c_name}' update logged: {change}")
                 
                 summary['updates'].append({
@@ -439,31 +447,16 @@ def write_df_to_mysql(df):
                     staged_pol['status'] = csv_status
                     staged_pol['distribution_channel'] = csv_channel
                 else:
-                    with engine.connect() as conn:
-                        conn.execute(
-                            text("""
-                                UPDATE policies 
-                                SET client_id = :client_id, 
-                                    product_id = :product_id, 
-                                    issue_date = :issue_date, 
-                                    expiry_date = :expiry_date, 
-                                    premium_amount = :premium, 
-                                    status = :status, 
-                                    distribution_channel = :channel 
-                                WHERE policy_id = :policy_id
-                            """),
-                            {
-                                "client_id": client_id,
-                                "product_id": product_id,
-                                "issue_date": row.issue_date_str,
-                                "expiry_date": row.expiry_date_str,
-                                "premium": csv_premium,
-                                "status": csv_status,
-                                "channel": csv_channel,
-                                "policy_id": p_id
-                            }
-                        )
-                        conn.execute(text("COMMIT;"))
+                    policy_updates.append({
+                        "client_id": client_id,
+                        "product_id": product_id,
+                        "issue_date": row.issue_date_str,
+                        "expiry_date": row.expiry_date_str,
+                        "premium": csv_premium,
+                        "status": csv_status,
+                        "channel": csv_channel,
+                        "policy_id": p_id
+                    })
                 
                 # Update cache
                 new_pol_cache = {
@@ -480,12 +473,10 @@ def write_df_to_mysql(df):
                 }
                 existing_policies[p_num_upper] = pd.Series(new_pol_cache)  # type: ignore
                 
-                os.makedirs('logs', exist_ok=True)
                 timestamp = pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')
                 for change in policy_changes:
-                    log_line = f"[{timestamp}] Policy {p_num}: {change} by Ingestion.\n"
-                    with open(os.path.join('logs', 'dataset_updates.log'), 'a') as f:
-                        f.write(log_line)
+                    log_line = f"[{timestamp}] Policy {p_num}: {change} by Ingestion."
+                    db.get_rotating_logger("dataset_updates", "logs/dataset_updates.log").info(log_line)
                     print(f"[db_writer] Policy {p_num} update logged: {change}")
                 
                 summary['updates'].append({
@@ -511,17 +502,14 @@ def write_df_to_mysql(df):
                     if p_id in new_commissions_by_pid:
                         new_commissions_by_pid[p_id]['calculated_amount'] = csv_comm
                     else:
-                        with engine.connect() as conn:
-                            conn.execute(
-                                text("UPDATE sales_commissions SET calculated_amount = :amount WHERE commission_id = :comm_id"),
-                                {"amount": csv_comm, "comm_id": existing_comm.commission_id}
-                            )
-                            conn.execute(text("COMMIT;"))
+                        commission_updates.append({
+                            "amount": csv_comm,
+                            "comm_id": existing_comm.commission_id
+                        })
                     
                     timestamp = pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')
-                    log_line = f"[{timestamp}] Sales Commission for Policy {p_num}: calculated_amount: {db_comm} -> {csv_comm} by Ingestion.\n"
-                    with open(os.path.join('logs', 'dataset_updates.log'), 'a') as f:
-                        f.write(log_line)
+                    log_line = f"[{timestamp}] Sales Commission for Policy {p_num}: calculated_amount: {db_comm} -> {csv_comm} by Ingestion."
+                    db.get_rotating_logger("dataset_updates", "logs/dataset_updates.log").info(log_line)
                     print(f"[db_writer] Commission for {p_num} updated: {db_comm} -> {csv_comm}")
                     
                     summary['updates'].append({
@@ -545,9 +533,8 @@ def write_df_to_mysql(df):
                 new_commissions_by_pid[p_id] = new_comm_val
                 
                 timestamp = pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')
-                log_line = f"[{timestamp}] Sales Commission for Policy {p_num}: Created with amount {csv_comm} by Ingestion.\n"
-                with open(os.path.join('logs', 'dataset_updates.log'), 'a') as f:
-                    f.write(log_line)
+                log_line = f"[{timestamp}] Sales Commission for Policy {p_num}: Created with amount {csv_comm} by Ingestion."
+                db.get_rotating_logger("dataset_updates", "logs/dataset_updates.log").info(log_line)
                 
                 summary['updates'].append({
                     'policy_number': p_num,
@@ -587,46 +574,36 @@ def write_df_to_mysql(df):
                         new_claims_by_pid[p_id]['quote_approved_amount'] = claim_amt
                         new_claims_by_pid[p_id]['status'] = uploaded_claim_status
                     else:
-                        with engine.connect() as conn:
-                            conn.execute(
-                                text("UPDATE claims SET quote_approved_amount = :amount, status = :status WHERE claim_id = :claim_id"),
-                                {"amount": claim_amt, "status": uploaded_claim_status, "claim_id": existing_cl.claim_id}
-                            )
-                            conn.execute(text("COMMIT;"))
+                        claim_updates.append({
+                            "amount": claim_amt,
+                            "status": uploaded_claim_status,
+                            "claim_id": existing_cl.claim_id
+                        })
                     
                     timestamp = pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')
                     
                     if uploaded_claim_status != db_claim_status:
-                        history_log_line = f"[{timestamp}] Claim {cl_num}: Status changed from '{db_claim_status}' to '{uploaded_claim_status}' by System Admin.\n"
+                        history_log_line = f"[{timestamp}] Claim {cl_num}: Status changed from '{db_claim_status}' to '{uploaded_claim_status}' by System Admin."
                         try:
-                            with open(os.path.join('logs', 'claim_status_history.log'), 'a') as f:
-                                f.write(history_log_line)
+                            db.get_rotating_logger("claim_status_history", "logs/claim_status_history.log").info(history_log_line)
                         except Exception as log_err:
                             print(f"[db_writer] Error writing claim status history log: {log_err}")
-                        try:
-                            with engine.connect() as conn:
-                                conn.execute(
-                                    text("INSERT INTO audit_claim_status_history (claim_number, old_status, new_status, changed_by) VALUES (:claim_num, :old, :new, :by)"),
-                                    {"claim_num": cl_num, "old": db_claim_status, "new": uploaded_claim_status, "by": "System Admin"}
-                                )
-                                conn.execute(text("COMMIT;"))
-                        except Exception as db_err:
-                            print(f"[db_writer] Error logging status change to DB: {db_err}")
+                        audit_claim_status_history_inserts.append({
+                            "claim_num": cl_num,
+                            "old": db_claim_status,
+                            "new": uploaded_claim_status,
+                            "by": "System Admin"
+                        })
                     
                     for change in claim_changes:
-                        log_line = f"[{timestamp}] Claim {cl_num} (Policy {p_num}): {change} by Ingestion.\n"
-                        with open(os.path.join('logs', 'dataset_updates.log'), 'a') as f:
-                            f.write(log_line)
+                        log_line = f"[{timestamp}] Claim {cl_num} (Policy {p_num}): {change} by Ingestion."
+                        db.get_rotating_logger("dataset_updates", "logs/dataset_updates.log").info(log_line)
                         print(f"[db_writer] Claim {cl_num} update logged: {change}")
-                        try:
-                            with engine.connect() as conn:
-                                conn.execute(
-                                    text("INSERT INTO audit_dataset_updates (claim_number, policy_number, message) VALUES (:claim_num, :policy_num, :msg)"),
-                                    {"claim_num": cl_num, "policy_num": p_num, "msg": change}
-                                )
-                                conn.execute(text("COMMIT;"))
-                        except Exception as db_err:
-                            print(f"[db_writer] Error logging dataset update to DB: {db_err}")
+                        audit_dataset_updates_inserts.append({
+                            "claim_num": cl_num,
+                            "policy_num": p_num,
+                            "msg": change
+                        })
                     
                     summary['updates'].append({
                         'policy_number': p_num,
@@ -654,34 +631,25 @@ def write_df_to_mysql(df):
                     new_claims_by_pid[p_id] = new_cl
                         
                     timestamp = pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')
-                    history_log_line = f"[{timestamp}] Claim {cl_num}: Status changed from 'No Claim' to '{uploaded_claim_status}' by System Admin.\n"
+                    history_log_line = f"[{timestamp}] Claim {cl_num}: Status changed from 'No Claim' to '{uploaded_claim_status}' by System Admin."
                     try:
-                        with open(os.path.join('logs', 'claim_status_history.log'), 'a') as f:
-                            f.write(history_log_line)
+                        db.get_rotating_logger("claim_status_history", "logs/claim_status_history.log").info(history_log_line)
                     except Exception as log_err:
                         print(f"[db_writer] Error writing claim status history log: {log_err}")
-                    try:
-                        with engine.connect() as conn:
-                            conn.execute(
-                                text("INSERT INTO audit_claim_status_history (claim_number, old_status, new_status, changed_by) VALUES (:claim_num, :old, :new, :by)"),
-                                {"claim_num": cl_num, "old": "No Claim", "new": uploaded_claim_status, "by": "System Admin"}
-                            )
-                            conn.execute(text("COMMIT;"))
-                    except Exception as db_err:
-                        print(f"[db_writer] Error logging status change to DB: {db_err}")
+                    audit_claim_status_history_inserts.append({
+                        "claim_num": cl_num,
+                        "old": "No Claim",
+                        "new": uploaded_claim_status,
+                        "by": "System Admin"
+                    })
                         
-                    log_line = f"[{timestamp}] Claim {cl_num} (Policy {p_num}): Created with amount {claim_amt} and status '{uploaded_claim_status}' by Ingestion.\n"
-                    with open(os.path.join('logs', 'dataset_updates.log'), 'a') as f:
-                        f.write(log_line)
-                    try:
-                        with engine.connect() as conn:
-                            conn.execute(
-                                text("INSERT INTO audit_dataset_updates (claim_number, policy_number, message) VALUES (:claim_num, :policy_num, :msg)"),
-                                {"claim_num": cl_num, "policy_num": p_num, "msg": f"Created with amount {claim_amt} and status '{uploaded_claim_status}'"}
-                            )
-                            conn.execute(text("COMMIT;"))
-                    except Exception as db_err:
-                        print(f"[db_writer] Error logging dataset update to DB: {db_err}")
+                    log_line = f"[{timestamp}] Claim {cl_num} (Policy {p_num}): Created with amount {claim_amt} and status '{uploaded_claim_status}' by Ingestion."
+                    db.get_rotating_logger("dataset_updates", "logs/dataset_updates.log").info(log_line)
+                    audit_dataset_updates_inserts.append({
+                        "claim_num": cl_num,
+                        "policy_num": p_num,
+                        "msg": f"Created with amount {claim_amt} and status '{uploaded_claim_status}'"
+                    })
                         
                     existing_claims[p_id] = pd.Series(new_cl)  # type: ignore
                     
@@ -834,31 +802,145 @@ def write_df_to_mysql(df):
                 new_claims_by_pid[policy_id] = new_cl
                 existing_claims[policy_id] = pd.Series(new_cl)  # type: ignore
 
-    # Bulk insert all new records using pandas to_sql append
-    with engine.connect() as conn:
+    # Bulk insert all new records and batch execute updates using pandas/SQLAlchemy inside a transaction
+    with engine.begin() as conn:
         conn.execute(text("SET FOREIGN_KEY_CHECKS = 0;"))
         conn.execute(text("SET SQL_SAFE_UPDATES = 0;"))
-        
-        if new_clients:
-            pd.DataFrame(new_clients).to_sql('clients', con=conn, if_exists='append', index=False)
-        if new_carriers:
-            pd.DataFrame(new_carriers).to_sql('carriers', con=conn, if_exists='append', index=False)
-        if new_products:
-            pd.DataFrame(new_products).to_sql('products', con=conn, if_exists='append', index=False)
-        if new_rates:
-            pd.DataFrame(new_rates).to_sql('commission_rates', con=conn, if_exists='append', index=False)
-        if new_policies:
-            pd.DataFrame(new_policies).to_sql('policies', con=conn, if_exists='append', index=False)
-        if new_commissions:
-            pd.DataFrame(new_commissions).to_sql('sales_commissions', con=conn, if_exists='append', index=False)
-        if new_claims:
-            pd.DataFrame(new_claims).to_sql('claims', con=conn, if_exists='append', index=False)
-            
-        conn.execute(text("COMMIT;"))
-        conn.execute(text("SET SQL_SAFE_UPDATES = 1;"))
-        conn.execute(text("SET FOREIGN_KEY_CHECKS = 1;"))
+        try:
+            # --- BATCH UPDATES ---
+            if client_updates:
+                conn.execute(
+                    text("UPDATE clients SET client_type = :c_type, region_code = :r_code, region_name = :r_name, address = :address WHERE client_id = :client_id"),
+                    client_updates
+                )
+            if policy_updates:
+                conn.execute(
+                    text("""
+                        UPDATE policies 
+                        SET client_id = :client_id, 
+                            product_id = :product_id, 
+                            issue_date = :issue_date, 
+                            expiry_date = :expiry_date, 
+                            premium_amount = :premium, 
+                            status = :status, 
+                            distribution_channel = :channel 
+                        WHERE policy_id = :policy_id
+                    """),
+                    policy_updates
+                )
+            if commission_updates:
+                conn.execute(
+                    text("UPDATE sales_commissions SET calculated_amount = :amount WHERE commission_id = :comm_id"),
+                    commission_updates
+                )
+            if claim_updates:
+                conn.execute(
+                    text("UPDATE claims SET quote_approved_amount = :amount, status = :status WHERE claim_id = :claim_id"),
+                    claim_updates
+                )
+                
+            # --- BATCH AUDIT INSERTS ---
+            if audit_claim_status_history_inserts:
+                conn.execute(
+                    text("INSERT INTO audit_claim_status_history (claim_number, old_status, new_status, changed_by) VALUES (:claim_num, :old, :new, :by)"),
+                    audit_claim_status_history_inserts
+                )
+            if audit_dataset_updates_inserts:
+                conn.execute(
+                    text("INSERT INTO audit_dataset_updates (claim_number, policy_number, message) VALUES (:claim_num, :policy_num, :msg)"),
+                    audit_dataset_updates_inserts
+                )
+                
+            # --- BULK INSERTS ---
+            if new_clients:
+                pd.DataFrame(new_clients).to_sql('clients', con=conn, if_exists='append', index=False)
+            if new_carriers:
+                pd.DataFrame(new_carriers).to_sql('carriers', con=conn, if_exists='append', index=False)
+            if new_products:
+                pd.DataFrame(new_products).to_sql('products', con=conn, if_exists='append', index=False)
+            if new_rates:
+                pd.DataFrame(new_rates).to_sql('commission_rates', con=conn, if_exists='append', index=False)
+            if new_policies:
+                pd.DataFrame(new_policies).to_sql('policies', con=conn, if_exists='append', index=False)
+            if new_commissions:
+                pd.DataFrame(new_commissions).to_sql('sales_commissions', con=conn, if_exists='append', index=False)
+            if new_claims:
+                pd.DataFrame(new_claims).to_sql('claims', con=conn, if_exists='append', index=False)
+        finally:
+            conn.execute(text("SET SQL_SAFE_UPDATES = 1;"))
+            conn.execute(text("SET FOREIGN_KEY_CHECKS = 1;"))
         
     print(f"[db_writer] Normalized database load complete. Appended {len(new_policies)} new policies.")
     
     summary['appended_count'] = len(new_policies)
     return summary
+
+
+def rollback_to_csv(csv_path: str, filename_label: str) -> dict:
+    """
+    Clears the normalized database tables and rebuilds the state
+    from a historical backup CSV file. Records this event in audit_ingestions.
+    """
+    print(f"[rollback] Starting database rollback to snapshot: {csv_path}")
+    engine = get_engine()
+    
+    # 1. Load backup dataframe
+    if not os.path.exists(csv_path):
+        raise FileNotFoundError(f"Backup file not found at: {csv_path}")
+        
+    df_backup = pd.read_csv(csv_path)
+    print(f"[rollback] Loaded {len(df_backup)} rows from backup file.")
+    
+    # 2. Reset database tables
+    with engine.connect() as conn:
+        conn.execute(text("SET FOREIGN_KEY_CHECKS = 0;"))
+        conn.execute(text("SET SQL_SAFE_UPDATES = 0;"))
+        
+        tables = [
+            'sales_commissions',
+            'claims',
+            'policies',
+            'products',
+            'carriers',
+            'clients',
+            'commission_rates'
+        ]
+        
+        for t in tables:
+            print(f"[rollback] Truncating table: {t}")
+            conn.execute(text(f"TRUNCATE TABLE {t};"))
+            
+        conn.execute(text("COMMIT;"))
+        conn.execute(text("SET SQL_SAFE_UPDATES = 1;"))
+        conn.execute(text("SET FOREIGN_KEY_CHECKS = 1;"))
+        
+    # Dispose connection pools to ensure Repeatable Read transaction snapshots are discarded
+    print("[rollback] Disposing connection pools to clear transaction snapshots...")
+    engine.dispose()
+    try:
+        import db
+        if hasattr(db, '_engine') and db._engine is not None:
+            db._engine.dispose()
+            print("[rollback] Stale db._engine connection pool disposed.")
+    except Exception as pool_err:
+        print(f"[rollback] Warning: Could not dispose db._engine pool: {pool_err}")
+        
+    # 3. Re-run relational pipeline write
+    print("[rollback] Re-ingesting historical data using standard write pipeline...")
+    summary = write_df_to_mysql(df_backup)
+    
+    # 4. Log rollback action to audit_ingestions
+    with engine.connect() as conn:
+        log_query = text(
+            "INSERT INTO audit_ingestions (filename, row_count, status) "
+            "VALUES (:filename, :row_count, 'ROLLED_BACK');"
+        )
+        conn.execute(log_query, {
+            "filename": f"Rollback to {filename_label}",
+            "row_count": len(df_backup)
+        })
+        conn.execute(text("COMMIT;"))
+        
+    print(f"[rollback] Rollback complete. Restored {summary.get('appended_count', 0)} policies.")
+    return summary
+

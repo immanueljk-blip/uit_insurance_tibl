@@ -11,4 +11,8 @@ faker==25.2.0
 openpyxl==3.1.5
 google-generativeai==0.8.6
 kaleido==0.1.0.post1
+gunicorn==22.0.0
+mysqlclient==2.2.8
+
+
 
