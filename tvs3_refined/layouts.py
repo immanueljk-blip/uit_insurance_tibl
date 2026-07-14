@@ -88,6 +88,7 @@ TAB_GROUPS = [
         "icon": "⛃",
         "tabs": [
             {"label": "Data Source", "value": "tab-13"},
+            {"label": "Rewind", "value": "tab-13b"},
         ],
     },
     {
@@ -102,10 +103,7 @@ TAB_GROUPS = [
 
 def serve_layout():
 
-    # ── SIDEBAR ───────────────────────────────────────────────────────────────
     sidebar = html.Div([
-
-
 
         # ── Nav label ─────────────────────────────────────────────────────────
         html.Div("NAVIGATION", className="sidebar-nav-label"),
@@ -148,7 +146,7 @@ def serve_layout():
         # Left: Brand + breadcrumb + sub-tab pills
         html.Div([
             html.Div(
-                html.Img(src="/assets/tvs_logo_final.png", style={"height": "32px", "width": "auto", "display": "block", "objectFit": "contain"}),
+                html.Img(src="/assets/tvs logo new.png", style={"height": "32px", "width": "auto", "display": "block", "objectFit": "contain"}),
                 style={"paddingRight": "24px", "marginRight": "20px", "borderRight": "2px solid var(--tvs-orange)", "display": "flex", "alignItems": "center", "height": "100%"}
             ),
             html.Div([
@@ -214,7 +212,10 @@ def serve_layout():
         dcc.Store(id='uploaded-schema-mapping-store'),
         dcc.Store(id='refresh-trigger'),
         dcc.Store(id='chat-history-store', data=[]),
+        dcc.Store(id='chat-followups-store', data=[]),
+        dcc.Store(id='pdf-executive-notes-store', data=''),
         dcc.Download(id='download-report-pdf'),
+        dcc.Download(id='chat-csv-download'),
 
         # Top Navigation spanning full width
         topbar,

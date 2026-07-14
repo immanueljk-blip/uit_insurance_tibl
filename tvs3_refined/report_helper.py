@@ -9,6 +9,7 @@ import os, io, re
 from datetime import datetime
 import pandas as pd
 import numpy as np
+from typing import Any, Optional, Union
 from reportlab.graphics.shapes import Drawing, Rect, Line, String, Circle
 
 from reportlab.lib import colors
@@ -36,7 +37,7 @@ DIVIDER = colors.HexColor("#E2E8F0")
 WHITE   = colors.white
 BLACK   = colors.HexColor("#0F172A")
 
-LOGO_PATH = os.path.join(os.path.dirname(__file__), "assets", "tvs_logo_final.png")
+LOGO_PATH = os.path.join(os.path.dirname(__file__), "assets", "tvs logo new.png")
 FONT_DIR  = r"C:\Windows\Fonts"
 
 # ── Register premium TTF fonts ────────────────────────────────────────────────
@@ -83,9 +84,9 @@ def _md_to_rl(text: str, body_font: str, body_bold: str, body_italic: str) -> st
     return text
 
 
-def _split_md_paragraphs(text: str, styles: dict) -> list:
+def _split_md_paragraphs(text: str, styles: dict) -> list[Any]:
     """Split markdown text into a list of ReportLab flowables (paragraphs + bullets)."""
-    flowables = []
+    flowables: list[Any] = []
     lines = text.split("\n")
     current_para = []
     bullet_items  = []
@@ -163,6 +164,10 @@ def _clean_for_pdf(text: str) -> str:
 
 def _to_indian_format(val: float) -> str:
     """Format a float into Indian Rupee notation: Rs.X,XX,XX,XXX.XX"""
+    try:
+        val = float(val)
+    except (ValueError, TypeError):
+        return str(val)
     if val < 0:
         return f"-{_to_indian_format(-val)}"
     integer_part = str(int(val))
@@ -238,7 +243,7 @@ def _styles():
                                    textColor=SILVER, alignment=TA_CENTER)
     s["no_data"] = ParagraphStyle("no_data", fontName=BODY_I, fontSize=9,
                                    textColor=SLATE)
-    s["kpi_val"] = ParagraphStyle("kpi_val", fontName=HEAD, fontSize=22,
+    s["kpi_val"] = ParagraphStyle("kpi_val", fontName=BODY_B, fontSize=22,
                                    textColor=NAVY, alignment=TA_CENTER, spaceBefore=4, spaceAfter=4)
     s["kpi_lbl"] = ParagraphStyle("kpi_lbl", fontName=BODY_B, fontSize=9,
                                    textColor=ORANGE, alignment=TA_CENTER, spaceBefore=4, letterSpacing=1.1)
@@ -255,12 +260,12 @@ def _header(S, generated_at: str) -> list:
             logo_cell = Image(LOGO_PATH, width=3.0 * cm, height=1.3 * cm)
             logo_cell.hAlign = "LEFT"
         except Exception:
-            logo_cell = Paragraph("TVS3", S["co_name"])
+            logo_cell = Paragraph("TVS Insurance Broking Private Limited", S["co_name"])
     else:
-        logo_cell = Paragraph("TVS3", S["co_name"])
+        logo_cell = Paragraph("TVS Insurance Broking Private Limited", S["co_name"])
 
     title_col = [
-        Paragraph("TVS Insurance Brokerage", S["co_name"]),
+        Paragraph("TVS Insurance Broking Private Limited", S["co_name"]),
         Paragraph("Analytics Intelligence Report", S["co_sub"]),
     ]
     ts_col = Paragraph(f"Generated:<br/><b>{generated_at}</b>", S["ts"])
@@ -303,7 +308,7 @@ def _data_table(data: list, S: dict) -> list:
     for i, row in enumerate(data[:60]):
         cells = []
         for col in columns:
-            raw = row.get(col, "")
+            raw = row.get(col, "")  
             fmt = _format_cell(raw)
             # Right-align if numeric
             try:
@@ -325,7 +330,7 @@ def _data_table(data: list, S: dict) -> list:
         ("RIGHTPADDING",  (0, 0), (-1, -1), 7),
         ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
     ]))
-    result = [tbl]
+    result: list[Any] = [tbl]
     if len(data) > 60:
         result.append(Paragraph(
             f"Showing first 60 of {len(data)} rows.",
@@ -355,18 +360,18 @@ def _draw_kpi_card(val_str: str, col_name: str, S: dict) -> Table:
     return t
 
 
-def _create_progress_bar(width: float, pct: float, color) -> Drawing:
+def _create_progress_bar(width: float, pct: float, color: Any) -> Drawing:
     d = Drawing(width, 16)
     # Background track
-    d.add(Rect(0, 3, width, 10, fillColor=colors.HexColor("#F1F5F9"), strokeColor=None, rx=4, ry=4))
+    d.add(Rect(0, 3, width, 10, fillColor=colors.HexColor("#F1F5F9"), strokeColor=None, rx=4, ry=4)) # type: ignore
     # Filled bar
     if pct > 0:
         fill_w = max(2, width * min(pct, 1.0))
-        d.add(Rect(0, 3, fill_w, 10, fillColor=color, strokeColor=None, rx=4, ry=4))
+        d.add(Rect(0, 3, fill_w, 10, fillColor=color, strokeColor=None, rx=4, ry=4)) # type: ignore
     return d
 
 
-def _draw_bar_chart_table(data: list, cat_col: str, val_col: str, S: dict, is_currency: bool = True) -> list:
+def _draw_bar_chart_table(data: list, cat_col: str, val_col: str, S: dict, is_currency: bool = True) -> Optional[list[Any]]:
     rows = []
     for r in data:
         c_val = r.get(cat_col)
@@ -415,7 +420,7 @@ def _draw_bar_chart_table(data: list, cat_col: str, val_col: str, S: dict, is_cu
     return [t]
 
 
-def _draw_line_chart(data: list, date_col: str, val_col: str, S: dict) -> Drawing:
+def _draw_line_chart(data: list, date_col: str, val_col: str, S: dict) -> Optional[Drawing]:
     points = []
     for row in data:
         d_val = row.get(date_col)
@@ -457,7 +462,7 @@ def _draw_line_chart(data: list, date_col: str, val_col: str, S: dict) -> Drawin
     
     d = Drawing(w, h)
     
-    d.add(Rect(pad_left, pad_bottom, plot_w, plot_h, fillColor=colors.HexColor("#F8FAFC"), strokeColor=DIVIDER, strokeWidth=1))
+    d.add(Rect(pad_left, pad_bottom, plot_w, plot_h, fillColor=colors.HexColor("#F8FAFC"), strokeColor=DIVIDER, strokeWidth=1)) # type: ignore
     
     grid_steps = 4
     for step in range(grid_steps + 1):
@@ -536,10 +541,13 @@ def _draw_general_kpi_table(df: pd.DataFrame, S: dict) -> Table:
             expired_df = df[df['policy_status'] == 'Expired']
             if not expired_df.empty:
                 exp_dates = pd.to_datetime(expired_df['expiry_date'], errors='coerce')
-                eligible_expired = ((exp_dates >= (today - pd.Timedelta(days=30))) & (exp_dates <= today)).sum()
+                eligible_expired = int(np.sum((exp_dates >= (today - pd.Timedelta(days=30))) & (exp_dates <= today)))
                 
         true_expired_churn = max(0, expired - eligible_expired)
         denom      = renewed + expired + cancelled
+        # Note: Retention Rate and Churn Rate do not sum to 100% because expired policies
+        # within the 30-day grace period (eligible_expired) are excluded from the churn numerator
+        # (true_expired_churn) but kept in the denominator since they are not yet fully churned.
         ret_rate   = (renewed / denom * 100) if denom > 0 else 0.0
         churn_rate = ((cancelled + true_expired_churn) / denom * 100) if denom > 0 else 0.0
     else:
@@ -591,7 +599,7 @@ def _draw_general_kpi_table(df: pd.DataFrame, S: dict) -> Table:
     return t
 
 
-def _draw_channel_mix_table(df: pd.DataFrame, S: dict) -> Table:
+def _draw_channel_mix_table(df: pd.DataFrame, S: dict) -> Optional[Table]:
     if 'distribution_channel' not in df.columns:
         return None
         
@@ -657,7 +665,7 @@ def _draw_channel_mix_table(df: pd.DataFrame, S: dict) -> Table:
     return t
 
 
-def _draw_regional_table(df: pd.DataFrame, S: dict, colWidths=None) -> Table:
+def _draw_regional_table(df: pd.DataFrame, S: dict, colWidths=None) -> Optional[Table]:
     if 'region' not in df.columns:
         return None
         
@@ -728,7 +736,7 @@ def _draw_regional_table(df: pd.DataFrame, S: dict, colWidths=None) -> Table:
     return t
 
 
-def _draw_top_clients_table(df: pd.DataFrame, S: dict) -> Table:
+def _draw_top_clients_table(df: pd.DataFrame, S: dict) -> Optional[Table]:
     if 'client_name' not in df.columns:
         return None
         
@@ -794,7 +802,7 @@ def _draw_top_clients_table(df: pd.DataFrame, S: dict) -> Table:
     return t
 
 
-def _draw_high_risk_table(df: pd.DataFrame, S: dict) -> Table:
+def _draw_high_risk_table(df: pd.DataFrame, S: dict) -> Optional[Union[Table, Paragraph]]:
     claim_col = 'claim_amount' if 'claim_amount' in df.columns else None
     premium_col = 'premium_amount' if 'premium_amount' in df.columns else None
     if not claim_col or not premium_col or 'client_name' not in df.columns:
@@ -926,7 +934,7 @@ def _draw_product_mix_table(df: pd.DataFrame, S: dict) -> Table:
     return t
 
 
-def _draw_carrier_table(df: pd.DataFrame, S: dict) -> Table:
+def _draw_carrier_table(df: pd.DataFrame, S: dict) -> Optional[Table]:
     if 'carrier_name' not in df.columns:
         return None
         
@@ -992,7 +1000,7 @@ def _draw_carrier_table(df: pd.DataFrame, S: dict) -> Table:
     return t
 
 
-def _draw_claims_breakdown_table(df: pd.DataFrame, S: dict, colWidths=None) -> Table:
+def _draw_claims_breakdown_table(df: pd.DataFrame, S: dict, colWidths=None) -> Optional[Table]:
     if 'claim_status' not in df.columns:
         return None
         
@@ -1046,13 +1054,13 @@ def _draw_claims_breakdown_table(df: pd.DataFrame, S: dict, colWidths=None) -> T
 
 
 
-def _draw_growth_trend_chart(df: pd.DataFrame, S: dict) -> Image:
+def _draw_growth_trend_chart(df: pd.DataFrame, S: dict) -> Optional[Image]:
     premium_col = 'premium_amount' if 'premium_amount' in df.columns else None
     if 'issue_date' not in df.columns or not premium_col:
         return None
     try:
         df3 = df.copy()
-        df3['issue_month'] = pd.to_datetime(df3['issue_date']).dt.to_period('M').astype(str)
+        df3['issue_month'] = pd.to_datetime(df3['issue_date']).dt.to_period('M').astype(str) # type: ignore
         growth_df = df3.groupby('issue_month')[premium_col].sum().reset_index().sort_values('issue_month')
         growth_df['cumulative'] = growth_df[premium_col].cumsum()
         
@@ -1073,13 +1081,13 @@ def _draw_growth_trend_chart(df: pd.DataFrame, S: dict) -> Image:
         print(f"[report_helper] Error growth chart: {e}")
         return None
 
-def _draw_vintage_cohort_chart(df: pd.DataFrame, S: dict) -> Image:
+def _draw_vintage_cohort_chart(df: pd.DataFrame, S: dict) -> Optional[Image]:
     if 'issue_date' not in df.columns or 'policy_status' not in df.columns:
         return None
     try:
         df2 = df.copy()
         df2['issue_date'] = pd.to_datetime(df2['issue_date'], errors='coerce')
-        df2['issue_quarter'] = df2['issue_date'].dt.to_period('Q').astype(str)
+        df2['issue_quarter'] = df2['issue_date'].dt.to_period('Q').astype(str) # type: ignore
         cohort = df2.groupby(['issue_quarter', 'policy_status']).size().reset_index(name='count')
         
         import plotly.express as px
@@ -1102,7 +1110,7 @@ def _draw_vintage_cohort_chart(df: pd.DataFrame, S: dict) -> Image:
         print(f"[report_helper] Error vintage chart: {e}")
         return None
 
-def _draw_profitability_carrier_chart(df: pd.DataFrame, S: dict) -> Image:
+def _draw_profitability_carrier_chart(df: pd.DataFrame, S: dict) -> Optional[Image]:
     premium_col = 'premium_amount' if 'premium_amount' in df.columns else None
     claim_col   = 'claim_amount'   if 'claim_amount'   in df.columns else None
     comm_col    = 'commission_earned' if 'commission_earned' in df.columns else None
@@ -1143,7 +1151,7 @@ def _draw_profitability_carrier_chart(df: pd.DataFrame, S: dict) -> Image:
         print(f"[report_helper] Error profitability chart: {e}")
         return None
 
-def _draw_margin_category_chart(df: pd.DataFrame, S: dict) -> Image:
+def _draw_margin_category_chart(df: pd.DataFrame, S: dict) -> Optional[Image]:
     premium_col = 'premium_amount' if 'premium_amount' in df.columns else None
     comm_col    = 'commission_earned' if 'commission_earned' in df.columns else None
     if 'category' not in df.columns or not premium_col or not comm_col:
@@ -1176,7 +1184,7 @@ def _draw_margin_category_chart(df: pd.DataFrame, S: dict) -> Image:
         print(f"[report_helper] Error margin chart: {e}")
         return None
 
-def _draw_renewal_calendar_chart(df: pd.DataFrame, S: dict) -> Image:
+def _draw_renewal_calendar_chart(df: pd.DataFrame, S: dict) -> Optional[Image]:
     premium_col = 'premium_amount' if 'premium_amount' in df.columns else None
     if 'expiry_date' not in df.columns or not premium_col:
         return None
@@ -1185,7 +1193,7 @@ def _draw_renewal_calendar_chart(df: pd.DataFrame, S: dict) -> Image:
         df2['expiry_date'] = pd.to_datetime(df2['expiry_date'], errors='coerce')
         now = pd.Timestamp.today().normalize()
         future = df2[df2['expiry_date'] >= now].copy()
-        future['exp_month_period'] = future['expiry_date'].dt.to_period('M')
+        future['exp_month_period'] = future['expiry_date'].dt.to_period('M') # type: ignore
         exp_monthly = future.groupby('exp_month_period').size().reset_index(name='Policies')
         exp_monthly = exp_monthly.sort_values('exp_month_period').head(12)
         exp_monthly['exp_month'] = exp_monthly['exp_month_period'].astype(str)
@@ -1208,7 +1216,7 @@ def _draw_renewal_calendar_chart(df: pd.DataFrame, S: dict) -> Image:
         return None
 
 
-def _draw_b2b_b2c_chart(df: pd.DataFrame, S: dict) -> Image:
+def _draw_b2b_b2c_chart(df: pd.DataFrame, S: dict) -> Optional[Image]:
     premium_col = 'premium_amount' if 'premium_amount' in df.columns else None
     claim_col   = 'claim_amount' if 'claim_amount' in df.columns else None
     comm_col    = 'commission_earned' if 'commission_earned' in df.columns else None
@@ -1239,7 +1247,7 @@ def _draw_b2b_b2c_chart(df: pd.DataFrame, S: dict) -> Image:
         print(f"[report_helper] Error segment chart: {e}")
         return None
 
-def _draw_carrier_portfolio_chart(df: pd.DataFrame, S: dict) -> Image:
+def _draw_carrier_portfolio_chart(df: pd.DataFrame, S: dict) -> Optional[Image]:
     premium_col = 'premium_amount' if 'premium_amount' in df.columns else None
     req_cols = ['carrier_name', 'category', 'sub_category']
     if not all(c in df.columns for c in req_cols) or not premium_col:
@@ -1268,7 +1276,7 @@ def _draw_carrier_portfolio_chart(df: pd.DataFrame, S: dict) -> Image:
         print(f"[report_helper] Error carrier breakdown chart: {e}")
         return None
 
-def _draw_channel_stacked_chart(df: pd.DataFrame, S: dict) -> Image:
+def _draw_channel_stacked_chart(df: pd.DataFrame, S: dict) -> Optional[Image]:
     premium_col = 'premium_amount' if 'premium_amount' in df.columns else None
     if 'distribution_channel' not in df.columns or 'category' not in df.columns or not premium_col:
         return None
@@ -1350,7 +1358,7 @@ def _generate_key_insight(df: pd.DataFrame) -> str:
     return insight
 
 
-def generate_session_pdf(history: list, df: pd.DataFrame = None, exec_notes: str = None) -> bytes:
+def generate_session_pdf(history: list, df: Optional[pd.DataFrame] = None, exec_notes: Optional[str] = None) -> bytes:
     """
     Generate a premium-quality, multi-page corporate PDF analytics report.
     """
@@ -1362,11 +1370,11 @@ def generate_session_pdf(history: list, df: pd.DataFrame = None, exec_notes: str
         buf, pagesize=A4,
         leftMargin=1.8 * cm, rightMargin=1.8 * cm,
         topMargin=1.5 * cm,  bottomMargin=2.2 * cm,
-        title="TVS Insurance Corporate Analytics Report",
-        author="TVS Insurance Brokerage",
+        title="TVS Insurance Broking Private Limited Analytics Report",
+        author="TVS Insurance Broking Private Limited",
     )
 
-    elems  = []
+    elems: list[Any] = []
 
     # ── COVER PAGE ─────────────────────────────────────────────────────────────
     elems.append(Spacer(1, 4 * cm))
@@ -1380,7 +1388,7 @@ def generate_session_pdf(history: list, df: pd.DataFrame = None, exec_notes: str
     elems.append(Spacer(1, 1.5 * cm))
     
     t_style = ParagraphStyle("cover_title", fontName=HEAD, fontSize=28, leading=34, textColor=NAVY, alignment=TA_CENTER)
-    elems.append(Paragraph("TVS Insurance Brokerage", t_style))
+    elems.append(Paragraph("TVS Insurance Broking Private Limited", t_style))
     elems.append(Spacer(1, 0.4 * cm))
     
     sub_style = ParagraphStyle("cover_subtitle", fontName=BODY_B, fontSize=14, leading=18, textColor=ORANGE, alignment=TA_CENTER)
@@ -1411,7 +1419,7 @@ def generate_session_pdf(history: list, df: pd.DataFrame = None, exec_notes: str
         else:
             narrative = (
                 "This corporate report compiles key operational indices, premium trajectories, product "
-                "segmentations, and claims lifecycles from the active policy database of TVS Insurance Brokerage. "
+                "segmentations, and claims lifecycles from the active policy database of TVS Insurance Broking Private Limited. "
                 "The metrics represent aggregated policy actions, risk profiles, and carrier performance."
             )
         elems.append(Paragraph(narrative, S["body"]))
@@ -1444,7 +1452,7 @@ def generate_session_pdf(history: list, df: pd.DataFrame = None, exec_notes: str
         if 'issue_date' in df.columns and premium_col:
             try:
                 df2 = df.copy()
-                df2['issue_month'] = pd.to_datetime(df2['issue_date']).dt.to_period('M').astype(str)
+                df2['issue_month'] = pd.to_datetime(df2['issue_date']).dt.to_period('M').astype(str) # type: ignore
                 df2['biz_type'] = df2['policy_status'].apply(
                     lambda s: 'Renewal' if s == 'Renewed' else 'New Business'
                 ) if 'policy_status' in df2.columns else 'New Business'
@@ -1585,7 +1593,7 @@ def generate_session_pdf(history: list, df: pd.DataFrame = None, exec_notes: str
                     title = {'text': "Global Incurred Claims Ratio", 'font': {'size': 12, 'color': "#475569"}},
                     number = {'suffix': "%", 'font': {'size': 28, 'color': "#1B3B8B", 'weight': 'bold'}},
                     gauge = {
-                        'axis': {'range': [None, 150], 'tickwidth': 1, 'tickcolor': "#D1D5DB"},
+                        'axis': {'range': [0, 150], 'tickvals': [0, 75, 85, 150], 'tickwidth': 1, 'tickcolor': "#D1D5DB"},
                         'bar': {'color': "#1B3B8B", 'thickness': 0.15}, 'bgcolor': "white", 'borderwidth': 0,
                         'steps': [{'range': [0, 75], 'color': "rgba(16, 185, 129, 0.2)"},
                                   {'range': [75, 85], 'color': "rgba(245, 158, 11, 0.2)"},
@@ -1678,7 +1686,11 @@ def generate_session_pdf(history: list, df: pd.DataFrame = None, exec_notes: str
         # ── PAGE 7: CLAIMS PIPELINE FUNNEL & RISK REGISTER ───────────────────────
         if 'claim_status' in df.columns and claim_col:
             try:
-                stage_order = ['Registered', 'Survey Completed', 'Approved', 'Settled']
+                stage_order = ['Registered', 'Under Review', 'Approved', 'Settled']
+                # Filter stage_order to only include statuses actually present in df['claim_status']
+                unique_statuses = set(df['claim_status'].dropna().unique())
+                stage_order = [s for s in stage_order if s in unique_statuses]
+                
                 raw_vals = {s: df[df['claim_status'] == s][claim_col].sum() for s in stage_order}
                 cumulative_vals = {}
                 running_sum = 0
@@ -1738,7 +1750,7 @@ def generate_session_pdf(history: list, df: pd.DataFrame = None, exec_notes: str
                 now = pd.Timestamp.today().normalize()
                 df2 = df.copy()
                 df2['expiry_date'] = pd.to_datetime(df2['expiry_date'], errors='coerce')
-                df2['days_to_expiry'] = (df2['expiry_date'] - now).dt.days
+                df2['days_to_expiry'] = (df2['expiry_date'] - now).dt.days # type: ignore
                 
                 b0_30   = df2[(df2['days_to_expiry'] >= 0) & (df2['days_to_expiry'] <= 30)]
                 b31_60  = df2[(df2['days_to_expiry'] > 30) & (df2['days_to_expiry'] <= 60)]
@@ -1797,7 +1809,7 @@ def generate_session_pdf(history: list, df: pd.DataFrame = None, exec_notes: str
         for msg in history:
             if msg.get("sender") == "user":
                 q_num += 1
-                block = [
+                block: list[Any] = [
                     Spacer(1, 0.25 * cm),
                     Paragraph(f"QUESTION  {q_num}", S["q_label"]),
                 ]
@@ -1875,7 +1887,7 @@ def generate_session_pdf(history: list, df: pd.DataFrame = None, exec_notes: str
                                 elems.append(Spacer(1, 0.4 * cm))
                                 
                         elif num_cols and len(df_temp) > 1:
-                            cat_col = cat_cols[0] if cat_cols else df_temp.columns[0]
+                            cat_col = str(cat_cols[0]) if cat_cols else str(df_temp.columns[0])
                             val_col = num_cols[0]
                             bar_flowables = _draw_bar_chart_table(data, cat_col, val_col, S)
                             if bar_flowables:
@@ -1931,7 +1943,7 @@ def generate_session_pdf(history: list, df: pd.DataFrame = None, exec_notes: str
         canvas.setFont(BODY_I if BODY_I != "Helvetica-Oblique" else "Helvetica-Oblique", 7.5)
         canvas.setFillColor(SILVER)
         canvas.drawString(1.8 * cm, 1.1 * cm,
-                          "TVS Insurance Brokerage  |  Confidential Analytics Report")
+                          "TVS Insurance Broking Private Limited  |  Confidential Analytics Report")
         canvas.drawRightString(A4[0] - 1.8 * cm, 1.1 * cm,
                                f"Page {doc.page}")
         # Bottom rule

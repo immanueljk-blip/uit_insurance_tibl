@@ -1,0 +1,4 @@
+policy_number,client_name,client_type,carrier_name,category,sub_category,premium_amount,claim_amount,commission_earned,policy_status,issue_date,expiry_date
+POL-TVS-TEST-901,Aarav Mehta,Individual/B2C,Bajaj Allianz,Motor,2W,12500.0,0.0,1250.0,Active,2026-06-01,2027-06-01
+POL-TVS-TEST-902,Aditi Sharma,Individual/B2C,Tata Aig,Health,Individual,35000.0,0.0,3500.0,Active,2026-06-02,2027-06-02
+POL-TVS-TEST-903,Vihaan Gupta,Corporate/B2B,Hdfc Ergo,Home,Theft,55000.0,0.0,5500.0,Active,2026-06-03,2027-06-03

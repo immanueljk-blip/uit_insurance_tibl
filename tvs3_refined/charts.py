@@ -79,9 +79,13 @@ def format_currency(val):
 
 
 def kpi_card(title, value, subtitle=None, subtitle_color=GREEN, accent=TVS_ORANGE, icon="", sparkline=None, id=None, theme=None):
+    val_kwargs = {"className": "kpi-value"}
+    if id:
+        val_kwargs["id"] = f"{id}-val"
+        
     children = [
         html.Div(icon + " " + title if icon else title, className="kpi-title"),
-        html.Div(value, className="kpi-value"),
+        html.Div(value, **val_kwargs),
     ]
     if subtitle:
         children.append(html.Div(subtitle, className="kpi-sub", style={"--sub-color": subtitle_color}))
@@ -1700,6 +1704,16 @@ def tab13(df, filename=None, is_mapped=False, is_schema_valid=True, validation_e
                 "fontWeight": "bold"
             },
             disabled=not is_mapped
+        ),
+        # Local Loading spinner & status text
+        dcc.Loading(
+            id="loading-local-ingestion",
+            type="circle",
+            color="#FF6B00",
+            children=html.Div(
+                id="ingestion-status-local",
+                style={"marginTop": "10px", "textAlign": "center", "fontSize": "11px", "color": "#1B3B8B", "fontWeight": "bold"}
+            )
         )
     ], flex="1", style={"padding": "14px", "width": "100%", "boxShadow": "var(--shadow-sm)", "maxWidth": "350px"})
 
@@ -2884,6 +2898,185 @@ def format_sql_query(sql_str):
     })
 
 
+
+def _build_auto_chart(data: list) -> dcc.Graph | None:
+    """Auto-generates a Plotly chart based on the shape of the data."""
+    if not data or len(data) == 0:
+        return None
+    
+    df = pd.DataFrame(data)
+    if len(df) < 2 or len(df.columns) < 2:
+        return None  # Single-row KPIs don't need a chart
+    
+    # Identify column types
+    numeric_cols = [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])]
+    text_cols = [c for c in df.columns if c not in numeric_cols]
+    date_cols = [c for c in text_cols if any(kw in c.lower() for kw in ['date', 'month', 'year', 'quarter', 'period'])]
+    
+    if not numeric_cols:
+        return None
+    
+    # Pick the best chart type
+    primary_numeric = numeric_cols[0]
+    
+    if date_cols and len(date_cols) > 0:
+        # Time-series → Line chart
+        x_col = date_cols[0]
+        fig = px.line(
+            df, x=x_col, y=primary_numeric,
+            title=f"{primary_numeric.replace('_', ' ').title()} Over Time",
+            color_discrete_sequence=[TVS_BLUE, TVS_ORANGE, GREEN, PURPLE]
+        )
+    elif text_cols:
+        # Categorical → Horizontal bar chart
+        cat_col = text_cols[0]
+        if len(numeric_cols) > 1:
+            # Multiple metrics → Grouped bar
+            fig = go.Figure()
+            colors = [TVS_BLUE, TVS_ORANGE, GREEN, PURPLE, AMBER, RED]
+            for i, nc in enumerate(numeric_cols[:4]):
+                fig.add_trace(go.Bar(
+                    name=nc.replace('_', ' ').title(),
+                    x=df[nc], y=df[cat_col],
+                    orientation='h',
+                    marker_color=colors[i % len(colors)]
+                ))
+            fig.update_layout(
+                barmode='group',
+                title=f"Comparison by {cat_col.replace('_', ' ').title()}"
+            )
+        else:
+            fig = px.bar(
+                df, x=primary_numeric, y=cat_col,
+                orientation='h',
+                title=f"{primary_numeric.replace('_', ' ').title()} by {cat_col.replace('_', ' ').title()}",
+                color_discrete_sequence=[TVS_BLUE]
+            )
+    else:
+        return None
+    
+    fig.update_layout(
+        height=280,
+        margin=dict(l=10, r=10, t=35, b=10),
+        font=dict(family="Plus Jakarta Sans, Inter, sans-serif", size=11),
+        plot_bgcolor="white",
+        paper_bgcolor="white",
+        title_font_size=13,
+        showlegend=len(numeric_cols) > 1
+    )
+    fig.update_xaxes(showgrid=True, gridcolor="#F1F5F9")
+    fig.update_yaxes(showgrid=False)
+    
+    return dcc.Graph(
+        figure=fig,
+        config={'displayModeBar': False},
+        style={"marginTop": "8px", "borderRadius": "6px", "border": "1px solid #E2E8F0"}
+    )
+
+
+_FOLLOWUP_MAP = {
+    'premium': ["Break down by carrier", "Show monthly premium trend", "Top 5 regions by premium"],
+    'claim': ["Show loss ratio by carrier", "Break down claims by product", "Which clients have highest claims?"],
+    'client': ["Show their premium breakdown", "Premium by client segment", "Which region has most clients?"],
+    'carrier': ["Premium by carrier", "Claims by carrier", "Commission breakdown by carrier"],
+    'product': ["Premium by product category", "Claims by product", "Which products are most popular?"],
+    'commission': ["Commission by carrier", "Top 5 clients by commission", "Commission trend by month"],
+    'loss': ["Loss ratio by region", "Loss ratio by carrier", "Loss ratio trend by month"],
+    'region': ["Premium by region", "Claims by region", "Top clients in each region"],
+}
+
+
+def _get_followup_suggestions(user_query: str) -> list:
+    """Returns 3 follow-up suggestions based on keywords in the user query."""
+    query_lower = user_query.lower() if user_query else ""
+    for keyword, suggestions in _FOLLOWUP_MAP.items():
+        if keyword in query_lower:
+            return suggestions[:3]
+    return ["Show monthly trend", "Break down by region", "Top 5 by premium"]
+
+
+def _build_comparison_card(data: list, entity_a: str, entity_b: str) -> list:
+    """Builds a side-by-side comparison card with KPI tiles and a grouped bar chart."""
+    if not data or len(data) == 0:
+        return []
+    
+    df = pd.DataFrame(data)
+    kpi_cards = []
+    colors = [TVS_BLUE, TVS_ORANGE, GREEN, PURPLE, AMBER]
+    
+    for i, (_, row) in enumerate(df.iterrows()):
+        name = row.get('carrier_name', f'Entity {i+1}')
+        premium = row.get('total_premium', 0)
+        claims = row.get('total_claims', 0)
+        policies = row.get('policy_count', 0)
+        loss_ratio = row.get('loss_ratio', 0)
+        commission = row.get('total_commission', 0)
+        
+        prem_cr = premium / 1e7 if premium else 0
+        claims_cr = claims / 1e7 if claims else 0
+        comm_cr = commission / 1e7 if commission else 0
+        
+        color = colors[i % len(colors)]
+        
+        card = html.Div([
+            html.Div(name, style={
+                "fontWeight": "800", "fontSize": "14px", "color": color,
+                "marginBottom": "8px", "borderBottom": f"2px solid {color}", "paddingBottom": "4px"
+            }),
+            html.Div([
+                html.Div([html.Div("Policies", style={"fontSize": "10px", "color": "#717784"}),
+                          html.Div(f"{policies:,}", style={"fontSize": "16px", "fontWeight": "700", "color": "#1E293B"})]),
+                html.Div([html.Div("Premium", style={"fontSize": "10px", "color": "#717784"}),
+                          html.Div(f"₹{prem_cr:,.2f} Cr", style={"fontSize": "16px", "fontWeight": "700", "color": TVS_BLUE})]),
+                html.Div([html.Div("Claims", style={"fontSize": "10px", "color": "#717784"}),
+                          html.Div(f"₹{claims_cr:,.2f} Cr", style={"fontSize": "16px", "fontWeight": "700", "color": RED})]),
+                html.Div([html.Div("Commission", style={"fontSize": "10px", "color": "#717784"}),
+                          html.Div(f"₹{comm_cr:,.2f} Cr", style={"fontSize": "16px", "fontWeight": "700", "color": GREEN})]),
+                html.Div([html.Div("Loss Ratio", style={"fontSize": "10px", "color": "#717784"}),
+                          html.Div(f"{loss_ratio:.1f}%", style={
+                              "fontSize": "16px", "fontWeight": "700",
+                              "color": RED if loss_ratio > 70 else (AMBER if loss_ratio > 50 else GREEN)
+                          })]),
+            ], style={"display": "grid", "gridTemplateColumns": "1fr 1fr 1fr 1fr 1fr", "gap": "8px"})
+        ], style={
+            "flex": "1", "padding": "12px", "background": "white", "borderRadius": "8px",
+            "border": f"1px solid {color}22", "boxShadow": f"0 2px 8px {color}11"
+        })
+        kpi_cards.append(card)
+    
+    card_row = html.Div(kpi_cards, style={"display": "flex", "gap": "12px", "marginTop": "10px"})
+    
+    # Grouped bar chart
+    metrics = ['total_premium', 'total_claims', 'total_commission']
+    metric_labels = ['Premium', 'Claims', 'Commission']
+    chart_data = []
+    for _, row in df.iterrows():
+        for m, ml in zip(metrics, metric_labels):
+            chart_data.append({
+                'Entity': row.get('carrier_name', 'Unknown'),
+                'Metric': ml,
+                'Value (₹ Crore)': (row.get(m, 0) or 0) / 1e7
+            })
+    
+    chart_df = pd.DataFrame(chart_data)
+    fig = px.bar(
+        chart_df, x='Metric', y='Value (₹ Crore)', color='Entity',
+        barmode='group', color_discrete_sequence=[TVS_BLUE, TVS_ORANGE, GREEN, PURPLE]
+    )
+    fig.update_layout(
+        height=250,
+        margin=dict(l=10, r=10, t=10, b=10),
+        font=dict(family="Plus Jakarta Sans, Inter, sans-serif", size=11),
+        plot_bgcolor="white", paper_bgcolor="white",
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+    )
+    
+    chart = dcc.Graph(figure=fig, config={'displayModeBar': False},
+                      style={"marginTop": "8px", "borderRadius": "6px", "border": "1px solid #E2E8F0"})
+    
+    return [card_row, chart]
+
+
 def build_chat_bubbles(history):
     if not history:
         return [
@@ -2900,11 +3093,14 @@ def build_chat_bubbles(history):
         ]
         
     bubbles = []
+    msg_index = 0
     for msg in history:
         sender = msg.get("sender")
         text = msg.get("text", "")
         sql = msg.get("sql")
         data = msg.get("data")
+        user_query = msg.get("user_query", "")
+        is_comparison = msg.get("is_comparison", False)
         
         if sender == "user":
             bubbles.append(
@@ -3018,12 +3214,63 @@ def build_chat_bubbles(history):
                 )
                 ai_children.append(table)
                 
+                # ── CSV Download Button ────────────────────────────────────
+                ai_children.append(
+                    html.Button(
+                        "📥 Download CSV",
+                        id={"type": "chat-download-csv", "index": msg_index},
+                        n_clicks=0,
+                        style={
+                            "marginTop": "8px", "fontSize": "11px", "padding": "5px 14px",
+                            "background": "#F1F5F9", "border": "1px solid #CBD5E1",
+                            "borderRadius": "6px", "cursor": "pointer", "color": "#334155",
+                            "fontWeight": "600", "fontFamily": "Plus Jakarta Sans, sans-serif"
+                        }
+                    )
+                )
+                
+                # ── Auto-Generated Chart or Comparison Card ────────────────
+                if is_comparison:
+                    entity_a = msg.get("entity_a", "A")
+                    entity_b = msg.get("entity_b", "B")
+                    comparison_elements = _build_comparison_card(data, entity_a, entity_b)
+                    ai_children.extend(comparison_elements)
+                else:
+                    chart = _build_auto_chart(data)
+                    if chart:
+                        ai_children.append(
+                            html.Details([
+                                html.Summary("📊 View Chart", style={"fontWeight": "600", "color": TVS_BLUE, "cursor": "pointer", "outline": "none", "marginTop": "6px"}),
+                                chart
+                            ], open=True, style={"marginTop": "6px", "fontSize": "12px"})
+                        )
+            
+            # ── Follow-Up Suggestion Chips ────────────────────────────
+            if not msg.get("is_placeholder") and not is_error:
+                q = user_query or text
+                followups = _get_followup_suggestions(q)
+                followup_chips = html.Div([
+                    html.Button(
+                        s,
+                        id={"type": "chat-followup", "index": f"{msg_index}-{i}"},
+                        n_clicks=0,
+                        style={
+                            "fontSize": "10.5px", "padding": "4px 12px", "marginRight": "6px",
+                            "marginTop": "8px", "background": f"{TVS_BLUE}0A", "border": f"1px solid {TVS_BLUE}33",
+                            "borderRadius": "20px", "cursor": "pointer", "color": TVS_BLUE,
+                            "fontWeight": "600", "fontFamily": "Plus Jakarta Sans, sans-serif"
+                        }
+                    ) for i, s in enumerate(followups)
+                ], style={"display": "flex", "flexWrap": "wrap"})
+                ai_children.append(followup_chips)
+                
             bubbles.append(
                 html.Div(
                     html.Div(ai_children, className="chat-bubble chat-bubble--ai"),
                     className="chat-bubble-row chat-bubble-row--ai"
                 )
             )
+        msg_index += 1
     return bubbles
 
 def tab15(df):
@@ -3111,4 +3358,123 @@ def tab15(df):
     })
     
     return layout
+
+
+# ─────────────────────────────────────────────
+# TAB 13b — Rewind (Data Versioning & Rollback)
+# ─────────────────────────────────────────────
+def tab13b(df):
+    if df.empty:
+        return html.Div("No Data Available")
+    
+    # 1. Page Title & Info Banner
+    header = section_title(
+        "Rewind - Data Versioning & Rollback",
+        "View CSV ingestion history and rollback the database state to a previous snapshot."
+    )
+    
+    # 2. KPI Cards Row
+    kpis = kpi_row(
+        kpi_card("Active Policies", f"{len(df):,}", "Current master records", TVS_BLUE, id="rewind-kpi-policies"),
+        kpi_card("Total Revisions", "Loading...", "Backup points stored in revisions/", TVS_ORANGE, accent=TVS_ORANGE, id="rewind-kpi-revisions"),
+        kpi_card("Eligible Rollbacks", "Loading...", "Within 4-hour window", GREEN, accent=GREEN, id="rewind-kpi-eligible"),
+        kpi_card("Last Activity", "Loading...", "Last system operation", PURPLE, accent=PURPLE, id="rewind-kpi-activity")
+    )
+    
+    # 3. Main content box: History Table
+    history_table = dash_table.DataTable(
+        id='rewind-history-table',
+        columns=[
+            {'name': 'Revision ID', 'id': 'revision_id'},
+            {'name': 'Backup File Name', 'id': 'filename'},
+            {'name': 'Timestamp', 'id': 'timestamp'},
+            {'name': 'Size (KB)', 'id': 'size'},
+            {'name': 'Status', 'id': 'status'},
+            {'name': 'Actions', 'id': 'actions', 'presentation': 'markdown'}
+        ],
+        data=[],
+        style_header={
+            'backgroundColor': TVS_BLUE,
+            'color': 'white',
+            'fontWeight': 'bold',
+            'padding': '8px 12px',
+            'fontSize': '12px',
+            'height': 'auto',
+            'textAlign': 'left'
+        },
+        style_cell={
+            'padding': '10px 12px',
+            'fontSize': '11px',
+            'fontFamily': 'Plus Jakarta Sans, Inter, sans-serif',
+            'textAlign': 'left',
+            'border': '1px solid #E5E7EB'
+        },
+        style_data_conditional=[
+            {'if': {'row_index': 'odd'}, 'backgroundColor': '#f9fafb'},
+            {'if': {'column_id': 'status', 'filter_query': '{status} contains "Current"'},\
+             'backgroundColor': '#D1FAE5', 'color': '#047857', 'fontWeight': 'bold'},
+            {'if': {'column_id': 'status', 'filter_query': '{status} contains "Rolled"'},\
+             'color': '#EF4444', 'textDecoration': 'line-through'},
+        ],
+        markdown_options={'link_target': '_self'}
+    )
+    
+    table_card = content_box([
+        html.Div([
+            html.Div([
+                html.Div("Available Backups & Ingestion Registry", style={"fontSize": "13px", "fontWeight": "800", "color": TVS_BLUE}),
+                html.P("To rollback, select a target state from the list. The system will restore the database to match that revision.", style={"fontSize": "10px", "color": "#6B7280", "margin": "0"}),
+            ], style={"flex": 1}),
+            # Refresh button
+            html.Button(
+                "Refresh History",
+                id="btn-refresh-rewind",
+                n_clicks=0,
+                className="hdr-btn hdr-btn--outline",
+                style={"fontSize": "11px", "padding": "4px 12px"}
+            )
+        ], style={"display": "flex", "justifyContent": "space-between", "alignItems": "center", "marginBottom": "12px"}),
+        history_table
+    ], style={"padding": "16px", "boxShadow": "var(--shadow-sm)", "marginTop": "14px"})
+    
+    # 4. Confirmation Modal
+    rollback_modal = dbc.Modal([
+        dbc.ModalHeader(dbc.ModalTitle(
+            "Confirm Database Rollback",
+            style={"color": "white", "fontWeight": "bold"}
+        ), style={"backgroundColor": TVS_ORANGE}),
+        dbc.ModalBody(id="rollback-modal-body"),
+        dbc.ModalFooter([
+            dbc.Button("Cancel & Stay Safe", id="btn-cancel-rollback", className="me-2", n_clicks=0, color="secondary"),
+            dbc.Button("Yes, Rollback Database", id="btn-confirm-rollback", n_clicks=0, color="danger")
+        ])
+    ], id="rollback-modal", is_open=False, size="lg")
+    
+    # 5. Success Modal
+    success_modal = dbc.Modal([
+        dbc.ModalHeader(dbc.ModalTitle(
+            "Rollback Success",
+            style={"color": "white", "fontWeight": "bold"}
+        ), style={"backgroundColor": "#10B981"}),
+        dbc.ModalBody(id="rollback-success-modal-body"),
+        dbc.ModalFooter(
+            dbc.Button("Dismiss", id="btn-close-rollback-success", className="ms-auto", n_clicks=0, color="success")
+        )
+    ], id="rollback-success-modal", is_open=False, size="md")
+    
+    # 6. Global status alerts wrapper
+    status_alert = html.Div(id="rollback-status-message", style={"marginTop": "10px"})
+    
+    # Return as tab layout
+    return html.Div([
+        header,
+        kpis,
+        table_card,
+        rollback_modal,
+        success_modal,
+        status_alert,
+        # Store to pass selected revision filename between callbacks
+        dcc.Store(id="selected-revision-store")
+    ], className="tab-pane", style={"padding": "14px", "height": "100%", "display": "flex", "flexDirection": "column", "gap": "0px"})
+
 
