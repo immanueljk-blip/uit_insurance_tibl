@@ -7,95 +7,14 @@ TVS_ORANGE = "#E55B13"
 # ── Tab group definitions ─────────────────────────────────────────────────────
 TAB_GROUPS = [
     {
-        "label": "Overview",
-        "icon": "▦",
-        "tabs": [
-            {"label": "Executive Summary", "value": "tab-1"},
-            {"label": "Growth & Renewals", "value": "tab-2"},
-            {"label": "Targeting Engine", "value": "tab-2b"},
-        ],
-    },
-    {
-        "label": "Clients",
-        "icon": "●",
-        "tabs": [
-            {"label": "Channel Mix",  "value": "tab-6b"},
-            {"label": "Top Clients",  "value": "tab-6"},
-        ],
-    },
-    {
-        "label": "Products",
-        "icon": "◈",
-        "tabs": [
-            {"label": "Product Mix",      "value": "tab-5"},
-            {"label": "Carrier Scorecard","value": "tab-5b"},
-        ],
-    },
-    {
-        "label": "Portfolio",
-        "icon": "◎",
-        "tabs": [
-            {"label": "Portfolio Renewals", "value": "tab-9"},
-            {"label": "Churn & Vintage",    "value": "tab-10"},
-        ],
-    },
-    {
-        "label": "Risk",
-        "icon": "⚠",
-        "tabs": [
-            {"label": "High Risk Register","value": "tab-4b"},
-        ],
-    },
-    {
         "label": "Claims",
         "icon": "⚕",
         "tabs": [
+            {"label": "Motor Ops & TAT",   "value": "tab-3e"},
+            {"label": "Pivot Builder",     "value": "tab-3d"},
+            {"label": "Cross-Tabulations", "value": "tab-3c"},
             {"label": "Claims Overview",  "value": "tab-3"},
             {"label": "Claims Breakdown", "value": "tab-3b"},
-        ],
-    },
-    {
-        "label": "Profitability",
-        "icon": "₹",
-        "tabs": [
-            {"label": "Profitability Trends", "value": "tab-7"},
-            {"label": "Margin Analysis",      "value": "tab-8"},
-        ],
-    },
-    {
-        "label": "Regional",
-        "icon": "⊕",
-        "tabs": [
-            {"label": "Regional Analytics", "value": "tab-11"},
-        ],
-    },
-    {
-        "label": "Explorer",
-        "icon": "⊞",
-        "tabs": [
-            {"label": "Pivot Explorer", "value": "tab-12"},
-        ],
-    },
-    {
-        "label": "Leads",
-        "icon": "⟳",
-        "tabs": [
-            {"label": "Sales Pipeline", "value": "tab-14"},
-        ],
-    },
-    {
-        "label": "Data Manager",
-        "icon": "⛃",
-        "tabs": [
-            {"label": "Data Source", "value": "tab-13"},
-            {"label": "Rewind", "value": "tab-13b"},
-        ],
-    },
-    {
-        "label": "AI Assistant",
-        "icon": "✧",
-        "tabs": [
-            {"label": "AI Chat", "value": "tab-15"},
         ],
     },
 ]
@@ -155,7 +74,7 @@ def serve_layout():
                 dcc.RadioItems(
                     id="tab-selector",
                     options=TAB_GROUPS[0]["tabs"],
-                    value="tab-1",
+                    value="tab-3",
                     inline=True,
                     inputStyle={"display": "none"},
                     labelStyle={
@@ -225,7 +144,12 @@ def serve_layout():
             sidebar,
             html.Div([
                 html.Div([
-                    html.Div(id="tab-content", style={"display": "flex", "flexDirection": "column"})
+                    dcc.Loading(
+                        id="tab-content-loading",
+                        type="circle",
+                        color=TVS_BLUE,
+                        children=html.Div(id="tab-content", style={"display": "flex", "flexDirection": "column"})
+                    )
                 ], className="scroll-wrapper", style={"flex": 1, "minHeight": 0, "padding": "8px 12px"})
             ], className="main-content")
         ], style={"display": "flex", "flex": 1, "overflow": "hidden"}),
@@ -236,7 +160,14 @@ def serve_layout():
                 id="drilldown-modal-title",
                 style={"color": "white", "fontWeight": "bold"},
             )),
-            dbc.ModalBody(id="drilldown-modal-body"),
+            dbc.ModalBody(
+                dcc.Loading(
+                    id="drilldown-modal-loading",
+                    type="circle",
+                    color=TVS_BLUE,
+                    children=html.Div(id="drilldown-modal-body")
+                )
+            ),
             dbc.ModalFooter(
                 dbc.Button("Close", id="btn-close-drilldown", className="ms-auto", n_clicks=0)
             )

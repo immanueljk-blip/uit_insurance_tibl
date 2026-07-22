@@ -15,7 +15,7 @@ def get_engine():
     db_user = os.getenv('DB_USER', 'root')
     db_password = os.getenv('DB_PASSWORD', 'root')
     db_name = os.getenv('DB_NAME', 'insurance_brokerage')
-    return create_engine(f"mysql+mysqldb://{db_user}:{db_password}@{db_host}/{db_name}")
+    return create_engine(f"mysql+pymysql://{db_user}:{db_password}@{db_host}/{db_name}")
 
 def write_df_to_mysql(df):
     """

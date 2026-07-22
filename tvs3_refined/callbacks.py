@@ -19,6 +19,7 @@ import json
 from layouts import TAB_GROUPS
 import report_helper
 from datetime import datetime as dt_datetime
+import claims_charts
 
 
 TVS_BLUE   = "#1B3B8B"
@@ -600,17 +601,38 @@ def update_record_count(stored_data, refresh_data):
 def update_header_icr(stored_data, refresh_data):
     df = get_current_df(stored_data)
     if df is None or df.empty:
-        return "ICR —"
-    claim_col = 'claim_amount' if 'claim_amount' in df.columns else None
-    premium_col = 'premium_amount' if 'premium_amount' in df.columns else None
-    if not claim_col or not premium_col:
-        return "ICR —"
-    total_claim = df[claim_col].sum()
-    total_prem = df[premium_col].sum()
-    if total_prem <= 0:
-        return "ICR —"
-    icr = total_claim / total_prem * 100
-    return f"ICR {icr:.1f}%"
+        return "CSR: —"
+    
+    # Calculate Claim Settlement Rate (CSR) - globally supported by claims datasets
+    csr = 0.0
+    if 'claim_status' in df.columns:
+        total_count = len(df)
+        status_series = df['claim_status'].astype(str).str.upper().str.strip()
+        settled_count = len(df[status_series.isin(['SETTLED', 'CLOSED', 'PAID'])])
+        csr = (settled_count / total_count * 100) if total_count > 0 else 0.0
+        
+    # Check for claim and premium columns across varied schemas
+    claim_col = None
+    for c in ['claim_settlement_amount', 'claim_amount', 'estimate', 'estimate_of_loss']:
+        if c in df.columns:
+            claim_col = c
+            break
+
+    premium_col = None
+    for c in ['premium_amount', 'premium', 'gwp', 'gross_premium']:
+        if c in df.columns:
+            premium_col = c
+            break
+    
+    if claim_col and premium_col:
+        total_claim = pd.to_numeric(df[claim_col], errors='coerce').fillna(0).sum()
+        total_prem = pd.to_numeric(df[premium_col], errors='coerce').fillna(0).sum()
+        if total_prem > 0:
+            icr = total_claim / total_prem * 100
+            return f"CSR: {csr:.1f}%  |  ICR: {icr:.1f}%"
+            
+    # Fallback to showing CSR if premium data is not available
+    return f"CSR: {csr:.1f}%"
 
 
 # ── Group navigation → sub-tab update ─────────────────────────────────────────
@@ -735,46 +757,10 @@ def render_tab(tab, stored_data, refresh_data, filename, raw_data, mapping_store
                 "padding": "40px", "color": "#D97706", "fontWeight": "600", "fontSize": "16px"
             })
         tab_map = {
-            "tab-1": tab1, "tab-2": tab2, "tab-2b": tab2b, "tab-3": tab3, "tab-3b": tab3b,
-            "tab-4b": tab4b, "tab-5": tab5, "tab-5b": tab5b,
-            "tab-6": tab6, "tab-6b": tab6b, "tab-7": tab7, "tab-8": tab8,
-            "tab-9": tab9, "tab-10": tab10, "tab-11": tab11, "tab-12": tab12,
-            "tab-13": tab13, "tab-13b": tab13b, "tab-14": tab14, "tab-15": tab15,
+            "tab-3": claims_charts.tab3, "tab-3b": claims_charts.tab3b, "tab-3c": claims_charts.tab3c, "tab-3d": claims_charts.tab3d, "tab-3e": claims_charts.tab3e
         }
         fn = tab_map.get(tab)
         if fn:
-            if tab == "tab-13":
-                # Render using the validated/mapped data if it exists, otherwise fall back to raw uploaded data or Live DB
-                if stored_data is not None:
-                    df_to_use = dff
-                elif raw_data is not None:
-                    df_to_use = get_raw_df(raw_data)
-                    if df_to_use is None:
-                        df_to_use = dff
-                else:
-                    df_to_use = dff
-                
-                if (stored_data is not None) or (raw_data is not None):
-                    if 'issue_date' in df_to_use.columns:
-                        df_to_use['issue_date'] = pd.to_datetime(df_to_use['issue_date'], errors='coerce')
-                    if 'expiry_date' in df_to_use.columns:
-                        df_to_use['expiry_date'] = pd.to_datetime(df_to_use['expiry_date'], errors='coerce')
-                
-                is_mapped = stored_data is not None
-                is_schema_valid = True
-                validation_errors = None
-                
-                # Only validate if we have raw data that has not been mapped/validated yet
-                if stored_data is None and raw_data is not None:
-                    missing_cols, field_errors, cell_errors = validate_dataframe(df_to_use)
-                    if missing_cols or field_errors:
-                        is_schema_valid = False
-                        validation_errors = {
-                            "missing_cols": missing_cols or [],
-                            "field_errors": field_errors or [],
-                            "cell_errors": cell_errors or []
-                        }
-                return fn(df_to_use, filename, is_mapped, is_schema_valid, validation_errors, mapping_suggestions=mapping_store)
             return fn(dff)
     except Exception:
         return html.Div([
@@ -942,7 +928,8 @@ def update_dynamic_pivot(row, col, metric, agg, stored_data, refresh_data):
             style_data_conditional=[
                 {'if': {'row_index': 'odd'}, 'backgroundColor': '#F9FAFB'}
             ],
-            export_format='csv'
+            export_format='csv',
+            export_headers='display'
         )
 
         return html.Div([
@@ -980,11 +967,15 @@ def refresh_data(n_clicks):
      Output("drilldown-modal-body", "children")],
     [Input({"type": "dynamic-chart", "index": ALL}, "clickData"),
      Input({"type": "kpi-card", "index": ALL}, "n_clicks"),
-     Input("btn-close-drilldown", "n_clicks")],
-    [State("uploaded-data-store", "data")],
+     Input("btn-close-drilldown", "n_clicks"),
+     Input({"type": "pivot-cell", "product": ALL, "status": ALL}, "n_clicks"),
+     Input({"type": "pivot-cell-dynamic", "row_col": ALL, "col_col": ALL, "row_val": ALL, "col_val": ALL}, "n_clicks"),
+     Input({"type": "scorecard", "index": ALL}, "active_cell")],
+    [State("uploaded-data-store", "data"),
+     State({"type": "scorecard", "index": ALL}, "data")],
     prevent_initial_call=True
 )
-def handle_universal_click(clickData_list, kpi_clicks_list, close_clicks, stored_data):
+def handle_universal_click(clickData_list, kpi_clicks_list, close_clicks, pivot_clicks_list, pivot_dynamic_clicks_list, scorecard_cells_list, stored_data, scorecard_data_list):
     if not ctx.triggered:
         return dash.no_update, dash.no_update, dash.no_update
 
@@ -1000,6 +991,103 @@ def handle_universal_click(clickData_list, kpi_clicks_list, close_clicks, stored
     if df.empty:
         return dash.no_update, dash.no_update, dash.no_update
 
+    # Handle Insurer Scorecard click
+    if isinstance(trigger_id, dict) and trigger_id.get("type") == "scorecard":
+        scorecard_cell = None
+        for cell in scorecard_cells_list:
+            if cell is not None:
+                scorecard_cell = cell
+                break
+                
+        if not scorecard_cell or not scorecard_data_list or len(scorecard_data_list) == 0:
+            return dash.no_update, dash.no_update, dash.no_update
+            
+        scorecard_data = scorecard_data_list[0]
+        
+        row_idx = scorecard_cell['row']
+        col_id = scorecard_cell['column_id']
+        
+        # Get clicked row data
+        row_data = scorecard_data[row_idx]
+        clicked_insurer = row_data['Insurer']
+        
+        # Filter global claims df to match this insurer
+        df['insurer_clean'] = df['insurer_details'].astype(str).str.upper().apply(claims_charts.clean_insurer)
+        filtered_df = df[df['insurer_clean'] == clicked_insurer].copy()
+        
+        title = f"Claims Ledger · {clicked_insurer}"
+        
+        # If they clicked on "Settled Claims" or "Total Payout" column, filter for settled claims only!
+        if col_id == "Settled Claims":
+            filtered_df = filtered_df[filtered_df['claim_status'].str.upper() == 'SETTLED']
+            title = f"Settled Claims Ledger · {clicked_insurer}"
+        elif col_id == "Total Payout":
+            filtered_df = filtered_df[filtered_df['claim_status'].str.upper() == 'SETTLED']
+            title = f"Settled Claims Ledger (Payouts) · {clicked_insurer}"
+            
+        if filtered_df.empty:
+            return True, title, html.Div("No records found.", style={"padding": "20px", "textAlign": "center", "color": "#6B7280"})
+
+        claim_col = 'claim_settlement_amount'
+        df_disp = filtered_df.copy()
+        df_disp.insert(0, 's_no', range(1, len(df_disp) + 1))
+        
+        if 'tibl_claim_no' in df_disp.columns and 's.no' in df_disp.columns:
+            df_disp['tibl_claim_no'] = df_disp.apply(
+                lambda r: f"TIBL-REF-{int(r['s.no'])}" if str(r['tibl_claim_no']).strip() in ['-', 'P'] else r['tibl_claim_no'],
+                axis=1
+            )
+        
+        display_cols = ['s_no', 'tibl_claim_no', 'insured_name', 'claim_status', 'type_of_loss', 'estimate', claim_col, 'reason']
+        display_cols = [c for c in display_cols if c in df_disp.columns]
+        
+        if 'estimate' in df_disp.columns:
+            df_disp['estimate'] = df_disp['estimate'].apply(claims_charts.format_currency)
+        if claim_col in df_disp.columns:
+            df_disp[claim_col] = df_disp[claim_col].apply(claims_charts.format_currency)
+
+        table = dash_table.DataTable(
+            id='drilldown-data-table',
+            data=df_disp[display_cols].to_dict('records'),
+            columns=[
+                {"name": "S.No.", "id": "s_no"} if i == "s_no" else {"name": i.replace("_", " ").title(), "id": i}
+                for i in display_cols
+            ],
+            page_size=6,
+            style_table={'overflowX': 'auto'},
+            style_cell={
+                'padding': '6px 12px',
+                'fontFamily': 'Plus Jakarta Sans, Inter, sans-serif',
+                'fontSize': '11px',
+                'border': '1px solid #E5E7EB',
+                'height': 'auto'
+            },
+            style_header={
+                'backgroundColor': TVS_BLUE,
+                'color': 'white',
+                'fontWeight': 'bold',
+                'padding': '8px 12px',
+                'fontSize': '11px',
+                'height': 'auto'
+            },
+            style_cell_conditional=[
+                {'if': {'column_id': 's_no'}, 'textAlign': 'center'},
+                {'if': {'column_id': 'tibl_claim_no'}, 'textAlign': 'left'},
+                {'if': {'column_id': 'insured_name'}, 'textAlign': 'left'},
+                {'if': {'column_id': 'type_of_loss'}, 'textAlign': 'left'},
+                {'if': {'column_id': 'claim_status'}, 'textAlign': 'left'},
+                {'if': {'column_id': 'estimate'}, 'textAlign': 'right'},
+                {'if': {'column_id': claim_col}, 'textAlign': 'right'},
+            ],
+            style_data_conditional=[{'if': {'row_index': 'odd'}, 'backgroundColor': '#f9fafb'}],
+            export_format='csv'
+        )
+        
+        modal_content = html.Div([
+            table
+        ])
+        return True, title, modal_content
+
     # Handle pattern matching triggers (KPI cards and dynamic charts)
     if isinstance(trigger_id, dict):
         trigger_type = trigger_id.get("type")
@@ -1010,56 +1098,52 @@ def handle_universal_click(clickData_list, kpi_clicks_list, close_clicks, stored
             if not clicks or clicks == 0:
                 return dash.no_update, dash.no_update, dash.no_update
 
+            # Normalise claim_status to uppercase before filtering so mixed-case DB values match
+            df_clean = df.copy()
+            df_clean['claim_status'] = df_clean['claim_status'].astype(str).str.upper().str.strip()
+
             if trigger_index == "claims-filed":
-                title = "Claims Filed Details"
-                filtered_df = df[df['claim_amount'] > 0].copy()
-            elif trigger_index == "open-exposure":
-                title = "Open Exposure Details"
-                open_statuses = ['Registered', 'Survey Completed']
-                filtered_df = df[df['claim_status'].isin(open_statuses)].copy()
-            elif trigger_index == "claims-approved":
-                title = "Approved Claims Details"
-                filtered_df = df[df['claim_status'] == 'Approved'].copy()
+                title = "All Claims Filed"
+                filtered_df = df_clean
+            elif trigger_index == "claims-est":
+                title = "Claims with Loss Estimate"
+                filtered_df = df_clean[df_clean['estimate'] > 0]
             elif trigger_index == "claims-settled":
-                title = "Settled Claims Details"
-                filtered_df = df[df['claim_status'] == 'Settled'].copy()
+                title = "Settled Claims"
+                filtered_df = df_clean[df_clean['claim_status'] == 'SETTLED']
+            elif trigger_index == "claims-rejected":
+                title = "Rejected / Repudiated Claims"
+                filtered_df = df_clean[df_clean['claim_status'].isin(['REJECTED', 'REPUDIATED'])]
+            elif trigger_index == "open-exposure":
+                title = "Open / Pending Claims"
+                filtered_df = df_clean[~df_clean['claim_status'].isin(['SETTLED', 'REJECTED', 'REPUDIATED'])]
             else:
                 filtered_df = pd.DataFrame()
                 title = "Details"
 
+            filtered_df = filtered_df.copy()
+
             if filtered_df.empty:
                 return True, title, html.Div("No records found.", style={"padding": "20px", "textAlign": "center", "color": "#6B7280"})
 
-            # Summary Metrics
-            total_val = filtered_df['claim_amount'].sum()
-            avg_val = filtered_df['claim_amount'].mean() if len(filtered_df) > 0 else 0
-            
-            summary_html = html.Div([
-                html.Div([
-                    html.Div("Total Claims", style={"fontSize": "11px", "color": "#6B7280", "fontWeight": "bold", "textTransform": "uppercase"}),
-                    html.Div(f"{len(filtered_df):,}", style={"fontSize": "20px", "fontWeight": "800", "color": TVS_BLUE}),
-                ], style={"flex": 1, "background": "#F3F4F6", "padding": "12px", "borderRadius": "8px", "marginRight": "12px"}),
-                html.Div([
-                    html.Div("Total Claim Value", style={"fontSize": "11px", "color": "#6B7280", "fontWeight": "bold", "textTransform": "uppercase"}),
-                    html.Div(format_currency(total_val), style={"fontSize": "20px", "fontWeight": "800", "color": TVS_BLUE}),
-                ], style={"flex": 1, "background": "#F3F4F6", "padding": "12px", "borderRadius": "8px", "marginRight": "12px"}),
-                html.Div([
-                    html.Div("Average Claim", style={"fontSize": "11px", "color": "#6B7280", "fontWeight": "bold", "textTransform": "uppercase"}),
-                    html.Div(format_currency(avg_val), style={"fontSize": "20px", "fontWeight": "800", "color": TVS_BLUE}),
-                ], style={"flex": 1, "background": "#F3F4F6", "padding": "12px", "borderRadius": "8px"}),
-            ], style={"display": "flex", "marginBottom": "16px"})
-
-            display_cols = ['policy_number', 'client_name', 'carrier_name', 'category', 'claim_status', 'claim_amount']
-            display_cols = [c for c in display_cols if c in filtered_df.columns]
-
+            claim_col = 'claim_settlement_amount'
             df_disp = filtered_df.copy()
-            if 'claim_amount' in df_disp.columns:
-                df_disp['claim_amount'] = df_disp['claim_amount'].apply(format_currency)
+            df_disp.insert(0, 's_no', range(1, len(df_disp) + 1))
+            display_cols = ['s_no', 'tibl_claim_no', 'insured_name', 'claim_status', 'type_of_loss', 'estimate', claim_col, 'reason']
+            display_cols = [c for c in display_cols if c in df_disp.columns]
+
+            if 'estimate' in df_disp.columns:
+                df_disp['estimate'] = df_disp['estimate'].apply(format_currency)
+            if claim_col in df_disp.columns:
+                df_disp[claim_col] = df_disp[claim_col].apply(claims_charts.format_currency)
 
             table = dash_table.DataTable(
                 id='drilldown-data-table',
                 data=df_disp[display_cols].to_dict('records'),
-                columns=[{"name": i.replace("_", " ").title(), "id": i} for i in display_cols],
+                columns=[
+                    {"name": "S.No.", "id": "s_no"} if i == "s_no" else {"name": i.replace("_", " ").title(), "id": i}
+                    for i in display_cols
+                ],
                 page_size=10,
                 style_table={'overflowX': 'auto'},
                 style_cell={
@@ -1078,18 +1162,19 @@ def handle_universal_click(clickData_list, kpi_clicks_list, close_clicks, stored
                     'height': 'auto'
                 },
                 style_cell_conditional=[
-                    {'if': {'column_id': 'policy_number'}, 'textAlign': 'left'},
-                    {'if': {'column_id': 'client_name'}, 'textAlign': 'left'},
-                    {'if': {'column_id': 'carrier_name'}, 'textAlign': 'left'},
-                    {'if': {'column_id': 'category'}, 'textAlign': 'left'},
+                    {'if': {'column_id': 's_no'}, 'textAlign': 'center'},
+                    {'if': {'column_id': 'tibl_claim_no'}, 'textAlign': 'left'},
+                    {'if': {'column_id': 'insured_name'}, 'textAlign': 'left'},
+                    {'if': {'column_id': 'type_of_loss'}, 'textAlign': 'left'},
                     {'if': {'column_id': 'claim_status'}, 'textAlign': 'left'},
-                    {'if': {'column_id': 'claim_amount'}, 'textAlign': 'right'},
+                    {'if': {'column_id': 'estimate'}, 'textAlign': 'right'},
+                    {'if': {'column_id': claim_col}, 'textAlign': 'right'},
                 ],
                 style_data_conditional=[{'if': {'row_index': 'odd'}, 'backgroundColor': '#f9fafb'}],
                 export_format='csv'
             )
 
-            # Hide claim status editor form (disabled in UI, preserved in DOM for callbacks)
+            # Hidden form elements preserved for downstream callback compatibility
             quick_update_form = html.Div([
                 dcc.Dropdown(id='dd-update-claim-policy', style={"display": "none"}),
                 dcc.Dropdown(id='dd-update-claim-status', style={"display": "none"}),
@@ -1097,12 +1182,225 @@ def handle_universal_click(clickData_list, kpi_clicks_list, close_clicks, stored
                 html.Div(id='claim-update-status', style={"display": "none"})
             ], style={"display": "none"})
 
+            modal_content = html.Div([quick_update_form, table])
+            return True, title, modal_content
+
+        elif trigger_type == "pivot-cell":
+            clicks = ctx.triggered[0]['value']
+            if not clicks or clicks == 0:
+                return dash.no_update, dash.no_update, dash.no_update
+
+            product = trigger_id.get("product")
+            status = trigger_id.get("status")
+            
+            if 'claim_status' in df.columns:
+                df = df.copy()
+                df['claim_status'] = df['claim_status'].astype(str).str.upper().str.strip()
+                
+            if product != 'Grand Total':
+                filtered_df = df[df['product'] == product].copy()
+            else:
+                filtered_df = df.copy()
+                
+            if status != 'Total Claims':
+                filtered_df = filtered_df[filtered_df['claim_status'] == status]
+                
+            title = f"Claims Ledger · {product}" if product != 'Grand Total' else "Claims Ledger · All Products"
+            
+            if filtered_df.empty:
+                return True, title, html.Div("No records found.", style={"padding": "20px", "textAlign": "center", "color": "#6B7280"})
+
+            # Claims specific columns
+            claim_col = 'claim_settlement_amount'
+            
+            df_disp = filtered_df.copy()
+            df_disp.insert(0, 's_no', range(1, len(df_disp) + 1))
+            
+            # Fallback placeholder claim numbers (dashes/P) to unique traceable references using Excel serial number (s.no)
+            if 'tibl_claim_no' in df_disp.columns and 's.no' in df_disp.columns:
+                df_disp['tibl_claim_no'] = df_disp.apply(
+                    lambda r: f"TIBL-REF-{int(r['s.no'])}" if str(r['tibl_claim_no']).strip() in ['-', 'P'] else r['tibl_claim_no'],
+                    axis=1
+                )
+            
+            display_cols = ['s_no', 'tibl_claim_no', 'insured_name', 'claim_status', 'type_of_loss', 'estimate', claim_col, 'reason']
+            display_cols = [c for c in display_cols if c in df_disp.columns]
+            
+            if 'estimate' in df_disp.columns:
+                df_disp['estimate'] = df_disp['estimate'].apply(format_currency)
+            if claim_col in df_disp.columns:
+                df_disp[claim_col] = df_disp[claim_col].apply(format_currency)
+
+            table = dash_table.DataTable(
+                id='drilldown-data-table',
+                data=df_disp[display_cols].to_dict('records'),
+                columns=[
+                    {"name": "S.No.", "id": "s_no"} if i == "s_no" else {"name": i.replace("_", " ").title(), "id": i}
+                    for i in display_cols
+                ],
+                page_size=6,
+                style_table={'overflowX': 'auto'},
+                style_cell={
+                    'padding': '6px 12px',
+                    'fontFamily': 'Plus Jakarta Sans, Inter, sans-serif',
+                    'fontSize': '11px',
+                    'border': '1px solid #E5E7EB',
+                    'height': 'auto'
+                },
+                style_header={
+                    'backgroundColor': TVS_BLUE,
+                    'color': 'white',
+                    'fontWeight': 'bold',
+                    'padding': '8px 12px',
+                    'fontSize': '11px',
+                    'height': 'auto'
+                },
+                style_cell_conditional=[
+                    {'if': {'column_id': 's_no'}, 'textAlign': 'center'},
+                    {'if': {'column_id': 'tibl_claim_no'}, 'textAlign': 'left'},
+                    {'if': {'column_id': 'insured_name'}, 'textAlign': 'left'},
+                    {'if': {'column_id': 'type_of_loss'}, 'textAlign': 'left'},
+                    {'if': {'column_id': 'claim_status'}, 'textAlign': 'left'},
+                    {'if': {'column_id': 'estimate'}, 'textAlign': 'right'},
+                    {'if': {'column_id': claim_col}, 'textAlign': 'right'},
+                ],
+                style_data_conditional=[{'if': {'row_index': 'odd'}, 'backgroundColor': '#f9fafb'}],
+                export_format='csv'
+            )
+            
             modal_content = html.Div([
-                summary_html,
-                quick_update_form,
                 table
             ])
+            return True, title, modal_content
+
+        elif trigger_type == "pivot-cell-dynamic":
+            clicks = ctx.triggered[0]['value']
+            if not clicks or clicks == 0:
+                return dash.no_update, dash.no_update, dash.no_update
+
+            row_col = trigger_id.get("row_col")
+            col_col = trigger_id.get("col_col")
+            row_val = trigger_id.get("row_val")
+            col_val = trigger_id.get("col_val")
+
+            filtered_df = df.copy()
             
+            # Map standard cleaning before filtering
+            placeholders = ['-', 'nan', '', 'None', 'None.', 'N/A', 'n/a']
+            for c in [row_col, col_col]:
+                if c in filtered_df.columns:
+                    filtered_df[c] = filtered_df[c].astype(str).str.strip().replace(placeholders, 'Not Specified')
+
+            if row_col == 'insurer_details' or row_col == 'insurer_clean':
+                filtered_df['insurer_clean'] = filtered_df['insurer_details'].astype(str).str.upper().apply(claims_charts.clean_insurer)
+                actual_row_col = 'insurer_clean'
+            else:
+                actual_row_col = row_col
+
+            if col_col == 'insurer_details' or col_col == 'insurer_clean':
+                filtered_df['insurer_clean'] = filtered_df['insurer_details'].astype(str).str.upper().apply(claims_charts.clean_insurer)
+                actual_col_col = 'insurer_clean'
+            else:
+                actual_col_col = col_col
+
+            if actual_row_col == 'claim_status' and 'claim_status' in filtered_df.columns:
+                filtered_df['claim_status'] = filtered_df['claim_status'].astype(str).str.upper().str.strip()
+            if actual_col_col == 'claim_status' and 'claim_status' in filtered_df.columns:
+                filtered_df['claim_status'] = filtered_df['claim_status'].astype(str).str.upper().str.strip()
+
+            if actual_row_col == 'type' and 'type' in filtered_df.columns:
+                filtered_df['type'] = filtered_df['type'].astype(str).str.strip().replace({
+                    'Not Specified': 'Non-Motor Lines', 'CV': 'Commercial Vehicle (CV)', 'PV': 'Private Vehicle (PV)', 'TW': 'Two-Wheeler (TW)'
+                })
+            if actual_col_col == 'type' and 'type' in filtered_df.columns:
+                filtered_df['type'] = filtered_df['type'].astype(str).str.strip().replace({
+                    'Not Specified': 'Non-Motor Lines', 'CV': 'Commercial Vehicle (CV)', 'PV': 'Private Vehicle (PV)', 'TW': 'Two-Wheeler (TW)'
+                })
+
+            # Pre-compute "Others" membership from the FULL cleaned df (before any
+            # row/col filter) so it matches exactly what build_pivot_matrix rendered.
+            if row_val == 'Others' and actual_row_col in filtered_df.columns:
+                top_rows = set(filtered_df[actual_row_col].value_counts().head(8).index)
+            if col_val == 'Others' and actual_col_col in filtered_df.columns:
+                top_cols = set(filtered_df[actual_col_col].value_counts().head(8).index)
+
+            # Apply row filter
+            if row_val == 'Others' and actual_row_col in filtered_df.columns:
+                filtered_df = filtered_df[~filtered_df[actual_row_col].isin(top_rows)]
+            elif row_val != 'Grand Total' and actual_row_col in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df[actual_row_col] == row_val]
+
+            # Apply col filter
+            if col_val == 'Others' and actual_col_col in filtered_df.columns:
+                filtered_df = filtered_df[~filtered_df[actual_col_col].isin(top_cols)]
+            elif col_val not in ['Total Claims', 'Total', 'ALL', 'none'] and col_col != 'none' and actual_col_col in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df[actual_col_col] == col_val]
+
+            title = f"Claims Ledger · {row_val}" if col_val in ['ALL', 'none', 'Total Claims'] or col_col == 'none' else f"Claims Ledger · {row_val} vs {col_val}"
+            
+            if filtered_df.empty:
+                return True, title, html.Div("No records found.", style={"padding": "20px", "textAlign": "center", "color": "#6B7280"})
+
+            # Claims specific columns
+            claim_col = 'claim_settlement_amount'
+            
+            df_disp = filtered_df.copy()
+            df_disp.insert(0, 's_no', range(1, len(df_disp) + 1))
+            
+            if 'tibl_claim_no' in df_disp.columns and 's.no' in df_disp.columns:
+                df_disp['tibl_claim_no'] = df_disp.apply(
+                    lambda r: f"TIBL-REF-{int(r['s.no'])}" if str(r['tibl_claim_no']).strip() in ['-', 'P'] else r['tibl_claim_no'],
+                    axis=1
+                )
+            
+            display_cols = ['s_no', 'tibl_claim_no', 'insured_name', 'claim_status', 'type_of_loss', 'estimate', claim_col, 'reason']
+            display_cols = [c for c in display_cols if c in df_disp.columns]
+            
+            if 'estimate' in df_disp.columns:
+                df_disp['estimate'] = df_disp['estimate'].apply(format_currency)
+            if claim_col in df_disp.columns:
+                df_disp[claim_col] = df_disp[claim_col].apply(format_currency)
+
+            table = dash_table.DataTable(
+                id='drilldown-data-table',
+                data=df_disp[display_cols].to_dict('records'),
+                columns=[
+                    {"name": "S.No.", "id": "s_no"} if i == "s_no" else {"name": i.replace("_", " ").title(), "id": i}
+                    for i in display_cols
+                ],
+                page_size=6,
+                style_table={'overflowX': 'auto'},
+                style_cell={
+                    'padding': '6px 12px',
+                    'fontFamily': 'Plus Jakarta Sans, Inter, sans-serif',
+                    'fontSize': '11px',
+                    'border': '1px solid #E5E7EB',
+                    'height': 'auto'
+                },
+                style_header={
+                    'backgroundColor': TVS_BLUE,
+                    'color': 'white',
+                    'fontWeight': 'bold',
+                    'padding': '8px 12px',
+                    'fontSize': '11px',
+                    'height': 'auto'
+                },
+                style_cell_conditional=[
+                    {'if': {'column_id': 's_no'}, 'textAlign': 'center'},
+                    {'if': {'column_id': 'tibl_claim_no'}, 'textAlign': 'left'},
+                    {'if': {'column_id': 'insured_name'}, 'textAlign': 'left'},
+                    {'if': {'column_id': 'type_of_loss'}, 'textAlign': 'left'},
+                    {'if': {'column_id': 'claim_status'}, 'textAlign': 'left'},
+                    {'if': {'column_id': 'estimate'}, 'textAlign': 'right'},
+                    {'if': {'column_id': claim_col}, 'textAlign': 'right'},
+                ],
+                style_data_conditional=[{'if': {'row_index': 'odd'}, 'backgroundColor': '#f9fafb'}],
+                export_format='csv'
+            )
+            
+            modal_content = html.Div([
+                table
+            ])
             return True, title, modal_content
 
         elif trigger_type == "dynamic-chart":
@@ -2336,4 +2634,380 @@ def close_success_modal(n_clicks):
     if n_clicks:
         return False
     return dash.no_update
+
+
+# ── Executive Dynamic Pivot Callbacks ──────────────────────────────────────────
+@app.callback(
+    Output("pivot-metrics-control-container", "children"),
+    Input("pivot-col-dim", "value")
+)
+def render_pivot_metrics_control(col_dim):
+    if col_dim == "none":
+        options = [
+            {'label': 'Total Claim Cases (Count)', 'value': 'count'},
+            {'label': 'Total Estimated Loss (₹ Exposure)', 'value': 'estimate'},
+            {'label': 'Total Settled Amount (₹ Payout)', 'value': 'settlement'},
+            {'label': 'Rejection Savings (₹ Leakage Prevented)', 'value': 'savings'},
+            {'label': 'Shortfall Amount (₹ Leakage)', 'value': 'shortfall'},
+            {'label': 'Avg Claim Size (₹ / Case)', 'value': 'avg_claim'},
+            {'label': 'Avg Claim TAT (Days)', 'value': 'avg_tat'},
+            {'label': 'Average Shortfall %', 'value': 'shortfall_pct'},
+            {'label': 'Claim Settlement Rate (CSR %)', 'value': 'csr'}
+        ]
+        return html.Div([
+            html.Label("3. Select Fields & Calculated Metrics to Display (Multi-Select Summary Columns):", style={"fontWeight": "600", "fontSize": "12px", "color": "#374151", "marginBottom": "8px", "display": "block"}),
+            dcc.Checklist(
+                id="pivot-metrics-select",
+                options=options,
+                value=["count", "estimate", "settlement", "shortfall_pct", "csr"],
+                inline=True,
+                inputStyle={"marginRight": "6px"},
+                labelStyle={
+                    "marginRight": "16px", "fontSize": "12px", "fontWeight": "500", "color": "#4B5563",
+                    "cursor": "pointer", "userSelect": "none", "display": "inline-flex", "alignItems": "center",
+                    "padding": "4px 8px", "borderRadius": "6px", "backgroundColor": "#F3F4F6", "marginBottom": "6px"
+                }
+            )
+        ])
+    else:
+        options = [
+            {'label': 'Total Estimated Loss (₹ Exposure)', 'value': 'estimate'},
+            {'label': 'Total Settled Amount (₹ Payout)', 'value': 'settlement'},
+            {'label': 'Total Claim Cases (Count)', 'value': 'count'},
+            {'label': 'Rejection Savings (₹ Leakage Prevented)', 'value': 'savings'},
+            {'label': 'Shortfall Amount (₹ Leakage)', 'value': 'shortfall'},
+            {'label': 'Avg Claim Size (₹ / Case)', 'value': 'avg_claim'},
+            {'label': 'Avg Claim TAT (Days)', 'value': 'avg_tat'}
+        ]
+        return html.Div([
+            html.Label("3. Select Primary Metric to Compare Across Matrix:", style={"fontWeight": "600", "fontSize": "12px", "color": "#374151", "marginBottom": "8px", "display": "block"}),
+            dcc.RadioItems(
+                id="pivot-metrics-select",
+                options=options,
+                value="estimate",
+                inline=True,
+                inputStyle={"marginRight": "6px"},
+                labelStyle={
+                    "marginRight": "16px", "fontSize": "12px", "fontWeight": "600", "color": "#1B3B8B",
+                    "cursor": "pointer", "userSelect": "none", "display": "inline-flex", "alignItems": "center",
+                    "padding": "4px 10px", "borderRadius": "6px", "backgroundColor": "#EEF2FB", "marginBottom": "6px"
+                }
+            )
+        ])
+
+
+@app.callback(
+    [Output("pivot-row-dim", "value"),
+     Output("pivot-col-dim", "value")],
+    [Input("preset-insurer", "n_clicks"),
+     Input("preset-financial", "n_clicks"),
+     Input("preset-garage", "n_clicks")],
+    prevent_initial_call=True
+)
+def handle_pivot_presets(n_ins, n_fin, n_gar):
+    trig = ctx.triggered_id
+    if trig == "preset-insurer":
+        return "insurer_details", "claim_status"
+    elif trig == "preset-financial":
+        return "product", "type_of_loss"
+    elif trig == "preset-garage":
+        return "garage", "claim_status"
+    return dash.no_update, dash.no_update
+
+
+@app.callback(
+    Output("dynamic-pivot-matrix-container", "children"),
+    [Input("pivot-row-dim", "value"),
+     Input("pivot-col-dim", "value"),
+     Input("pivot-metrics-select", "value"),
+     Input("uploaded-data-store", "data"),
+     Input("refresh-trigger", "data")]
+)
+def render_dynamic_pivot_matrix(row_dim, col_dim, metrics_selected, stored_data, refresh_trigger):
+    if isinstance(metrics_selected, str):
+        metrics_selected = [metrics_selected]
+    elif not metrics_selected:
+        metrics_selected = ['estimate']
+
+    df = get_current_df(stored_data)
+    if df is None or df.empty:
+        df = db.get_data()
+
+    if df.empty or row_dim not in df.columns:
+        return html.Div("No data available.")
+
+    # Clean dimension names for display
+    row_label = row_dim.replace("_", " ").title()
+    col_label = col_dim.replace("_", " ").title() if col_dim != "none" else "Summary"
+
+    # Pre-process numeric helper columns & normalize categories
+    df_pivot = df.copy()
+    
+    # Strip whitespace and normalize casing across string columns to prevent duplicate categories
+    for col in df_pivot.select_dtypes(include=['object']):
+        df_pivot[col] = df_pivot[col].astype(str).str.strip().str.title()
+
+    if 'estimate' not in df_pivot.columns: df_pivot['estimate'] = 0
+    if 'claim_settlement_amount' not in df_pivot.columns: df_pivot['claim_settlement_amount'] = 0
+
+    df_pivot['estimate'] = pd.to_numeric(df_pivot['estimate'], errors='coerce').fillna(0)
+    df_pivot['claim_settlement_amount'] = pd.to_numeric(df_pivot['claim_settlement_amount'], errors='coerce').fillna(0)
+    
+    # Normalize carrier names if insurer_details is selected
+    if row_dim == 'insurer_details' and 'insurer_details' in df_pivot.columns:
+        df_pivot['insurer_details'] = df_pivot['insurer_details'].apply(claims_charts.clean_insurer)
+    if col_dim == 'insurer_details' and 'insurer_details' in df_pivot.columns:
+        df_pivot['insurer_details'] = df_pivot['insurer_details'].apply(claims_charts.clean_insurer)
+
+    # Calculate savings & shortfall leakage
+    df_pivot['_rejection_savings'] = df_pivot.apply(
+        lambda r: r['estimate'] if str(r.get('claim_status', '')).upper() == 'REJECTED' else max(0, r['estimate'] - r['claim_settlement_amount']), axis=1
+    )
+    df_pivot['_shortfall_leakage'] = (df_pivot['estimate'] - df_pivot['claim_settlement_amount']).clip(lower=0)
+
+    if 'tat_total_days' in df_pivot.columns:
+        df_pivot['tat_total_days'] = pd.to_numeric(df_pivot['tat_total_days'], errors='coerce').fillna(0)
+    else:
+        df_pivot['tat_total_days'] = 0
+
+    def format_inr(val):
+        if val is None or pd.isna(val) or val == 0:
+            return "0"
+        abs_v = abs(val)
+        if abs_v >= 1_00_00_000:
+            return f"₹{val / 1_00_00_000:.2f} Cr"
+        elif abs_v >= 1_00_000:
+            return f"₹{val / 1_00_000:.2f} L"
+        else:
+            return f"₹{val:,.0f}"
+
+    # 1. Single dimension summary if col_dim is 'none'
+    if col_dim == 'none' or col_dim not in df_pivot.columns:
+        grouped = df_pivot.groupby(row_dim, dropna=False).agg(
+            total_cases=('estimate', 'count'),
+            sum_estimate=('estimate', 'sum'),
+            sum_settlement=('claim_settlement_amount', 'sum'),
+            sum_savings=('_rejection_savings', 'sum'),
+            sum_shortfall=('_shortfall_leakage', 'sum'),
+            avg_tat=('tat_total_days', lambda s: s[s > 0].mean() if (s > 0).any() else 0),
+            settled_cases=('claim_status', lambda s: (s.str.upper() == 'SETTLED').sum())
+        ).reset_index()
+
+        grouped['avg_claim'] = grouped.apply(
+            lambda r: (r['sum_estimate'] / r['total_cases']) if r['total_cases'] > 0 else 0, axis=1
+        )
+        grouped['shortfall_pct'] = grouped.apply(
+            lambda r: ((r['sum_estimate'] - r['sum_settlement']) / r['sum_estimate'] * 100) if r['sum_estimate'] > 0 else 0, axis=1
+        )
+        grouped['csr'] = grouped.apply(
+            lambda r: (r['settled_cases'] / r['total_cases'] * 100) if r['total_cases'] > 0 else 0, axis=1
+        )
+
+        grouped.sort_values(by='total_cases', ascending=False, inplace=True)
+
+        header_cells = [html.Th(row_label, style={'padding': '10px 14px', 'textAlign': 'left', 'fontWeight': '700', 'color': '#1E293B', 'borderBottom': '2px solid #CBD5E1', 'backgroundColor': '#F8FAFC', 'fontSize': '12px'})]
+        
+        if 'count' in metrics_selected:
+            header_cells.append(html.Th("Total Claims", style={'padding': '10px 14px', 'textAlign': 'right', 'fontWeight': '700', 'color': '#1E293B', 'borderBottom': '2px solid #CBD5E1', 'backgroundColor': '#F8FAFC', 'fontSize': '12px'}))
+        if 'estimate' in metrics_selected:
+            header_cells.append(html.Th("Total Exposure", style={'padding': '10px 14px', 'textAlign': 'right', 'fontWeight': '700', 'color': '#1E293B', 'borderBottom': '2px solid #CBD5E1', 'backgroundColor': '#F8FAFC', 'fontSize': '12px'}))
+        if 'settlement' in metrics_selected:
+            header_cells.append(html.Th("Settled Disbursed", style={'padding': '10px 14px', 'textAlign': 'right', 'fontWeight': '700', 'color': '#1E293B', 'borderBottom': '2px solid #CBD5E1', 'backgroundColor': '#F8FAFC', 'fontSize': '12px'}))
+        if 'savings' in metrics_selected:
+            header_cells.append(html.Th("Rejection Savings", style={'padding': '10px 14px', 'textAlign': 'right', 'fontWeight': '700', 'color': '#1E293B', 'borderBottom': '2px solid #CBD5E1', 'backgroundColor': '#F8FAFC', 'fontSize': '12px'}))
+        if 'shortfall' in metrics_selected:
+            header_cells.append(html.Th("Shortfall Leakage", style={'padding': '10px 14px', 'textAlign': 'right', 'fontWeight': '700', 'color': '#1E293B', 'borderBottom': '2px solid #CBD5E1', 'backgroundColor': '#F8FAFC', 'fontSize': '12px'}))
+        if 'avg_claim' in metrics_selected:
+            header_cells.append(html.Th("Avg Claim Size", style={'padding': '10px 14px', 'textAlign': 'right', 'fontWeight': '700', 'color': '#1E293B', 'borderBottom': '2px solid #CBD5E1', 'backgroundColor': '#F8FAFC', 'fontSize': '12px'}))
+        if 'avg_tat' in metrics_selected:
+            header_cells.append(html.Th("Avg TAT (Days)", style={'padding': '10px 14px', 'textAlign': 'right', 'fontWeight': '700', 'color': '#1E293B', 'borderBottom': '2px solid #CBD5E1', 'backgroundColor': '#F8FAFC', 'fontSize': '12px'}))
+        if 'shortfall_pct' in metrics_selected:
+            header_cells.append(html.Th("Avg Shortfall %", style={'padding': '10px 14px', 'textAlign': 'right', 'fontWeight': '700', 'color': '#1E293B', 'borderBottom': '2px solid #CBD5E1', 'backgroundColor': '#F8FAFC', 'fontSize': '12px'}))
+        if 'csr' in metrics_selected:
+            header_cells.append(html.Th("CSR %", style={'padding': '10px 14px', 'textAlign': 'right', 'fontWeight': '700', 'color': '#1E293B', 'borderBottom': '2px solid #CBD5E1', 'backgroundColor': '#F8FAFC', 'fontSize': '12px'}))
+
+        body_rows = []
+        for idx, row in grouped.iterrows():
+            r_val = str(row[row_dim])
+            cells = [html.Td(
+                r_val,
+                style={'padding': '8px 14px', 'borderBottom': '1px solid #E2E8F0', 'fontWeight': '600', 'color': '#1B3B8B', 'fontSize': '12px', 'cursor': 'pointer'},
+                className='pivot-clickable',
+                id={'type': 'pivot-cell-dynamic', 'row_col': row_dim, 'col_col': 'none', 'row_val': r_val, 'col_val': 'ALL'},
+                n_clicks=0
+            )]
+            
+            if 'count' in metrics_selected:
+                cells.append(html.Td(f"{int(row['total_cases']):,}", style={'padding': '8px 14px', 'textAlign': 'right', 'borderBottom': '1px solid #E2E8F0', 'fontSize': '12px'}))
+            if 'estimate' in metrics_selected:
+                cells.append(html.Td(format_inr(row['sum_estimate']), style={'padding': '8px 14px', 'textAlign': 'right', 'borderBottom': '1px solid #E2E8F0', 'fontSize': '12px'}))
+            if 'settlement' in metrics_selected:
+                cells.append(html.Td(format_inr(row['sum_settlement']), style={'padding': '8px 14px', 'textAlign': 'right', 'borderBottom': '1px solid #E2E8F0', 'fontSize': '12px', 'color': '#15803D', 'fontWeight': '600'}))
+            if 'savings' in metrics_selected:
+                cells.append(html.Td(format_inr(row['sum_savings']), style={'padding': '8px 14px', 'textAlign': 'right', 'borderBottom': '1px solid #E2E8F0', 'fontSize': '12px', 'color': '#B91C1C', 'fontWeight': '600'}))
+            if 'shortfall' in metrics_selected:
+                cells.append(html.Td(format_inr(row['sum_shortfall']), style={'padding': '8px 14px', 'textAlign': 'right', 'borderBottom': '1px solid #E2E8F0', 'fontSize': '12px', 'color': '#C2410C', 'fontWeight': '600'}))
+            if 'avg_claim' in metrics_selected:
+                cells.append(html.Td(format_inr(row['avg_claim']), style={'padding': '8px 14px', 'textAlign': 'right', 'borderBottom': '1px solid #E2E8F0', 'fontSize': '12px'}))
+            if 'avg_tat' in metrics_selected:
+                cells.append(html.Td(f"{row['avg_tat']:.1f} d" if row['avg_tat'] > 0 else "-", style={'padding': '8px 14px', 'textAlign': 'right', 'borderBottom': '1px solid #E2E8F0', 'fontSize': '12px'}))
+            if 'shortfall_pct' in metrics_selected:
+                sh_val = row['shortfall_pct']
+                cells.append(html.Td(f"{sh_val:.1f}%", style={'padding': '8px 14px', 'textAlign': 'right', 'borderBottom': '1px solid #E2E8F0', 'fontSize': '12px', 'color': '#C2410C' if sh_val > 30 else '#334155'}))
+            if 'csr' in metrics_selected:
+                csr_val = row['csr']
+                cells.append(html.Td(f"{csr_val:.1f}%", style={'padding': '8px 14px', 'textAlign': 'right', 'borderBottom': '1px solid #E2E8F0', 'fontSize': '12px', 'fontWeight': '700', 'color': '#166534' if csr_val >= 80 else '#991B1B'}))
+            
+            body_rows.append(html.Tr(cells, style={'backgroundColor': '#F8FAFC' if idx % 2 == 1 else 'white'}))
+
+        table = html.Table([html.Thead(html.Tr(header_cells)), html.Tbody(body_rows)], style={'width': '100%', 'borderCollapse': 'collapse', 'fontFamily': 'Inter, sans-serif'})
+        return html.Div(table, style={'overflowX': 'auto'})
+
+    # 2. Cross-tabulation pivot matrix (row_dim vs col_dim)
+    METRIC_INFO = {
+        'count': ('Claim Cases (Count)', 'count', 'estimate', lambda v: f"{int(v):,}"),
+        'estimate': ('Total Exposure (₹)', 'sum', 'estimate', format_inr),
+        'settlement': ('Settled Disbursed (₹)', 'sum', 'claim_settlement_amount', format_inr),
+        'savings': ('Rejection Savings (₹)', 'sum', '_rejection_savings', format_inr),
+        'shortfall': ('Shortfall Leakage (₹)', 'sum', '_shortfall_leakage', format_inr),
+        'avg_claim': ('Avg Claim Size (₹)', 'mean', 'estimate', format_inr),
+        'avg_tat': ('Avg Claim TAT (Days)', 'mean', 'tat_total_days', lambda v: f"{v:.1f} d" if pd.notna(v) and v > 0 else "-")
+    }
+
+    active_m_keys = [m for m in metrics_selected if m in METRIC_INFO]
+    if not active_m_keys:
+        active_m_keys = ['count']
+
+    primary_m = active_m_keys[0]
+    m_label, agg_fn, target_col, fmt_fn = METRIC_INFO[primary_m]
+
+    pivot = pd.pivot_table(
+        df_pivot,
+        index=row_dim,
+        columns=col_dim,
+        values=target_col,
+        aggfunc=agg_fn,
+        fill_value=0
+    )
+
+    # Group low volume columns into 'Others' if > 7 columns
+    cols = list(pivot.columns)
+    col_totals = pivot.sum(axis=0).sort_values(ascending=False)
+    if len(cols) > 7:
+        top_7 = list(col_totals.index[:7])
+        other_cols = list(col_totals.index[7:])
+        pivot['Others'] = pivot[other_cols].sum(axis=1)
+        pivot = pivot[top_7 + ['Others']]
+
+    pivot['Total'] = pivot.sum(axis=1)
+    pivot.loc['Grand Total'] = pivot.sum()
+
+    cols = list(pivot.columns)
+    cols.remove('Total')
+    if 'Others' in cols:
+        cols.remove('Others')
+        ordered_cols = cols + ['Others', 'Total']
+    else:
+        ordered_cols = cols + ['Total']
+
+    rows = list(pivot.index)
+    rows.remove('Grand Total')
+    rows = sorted(rows, key=lambda x: pivot.loc[x, 'Total'], reverse=True)
+    if 'Others' in rows:
+        rows.remove('Others')
+        ordered_rows = rows + ['Others', 'Grand Total']
+    else:
+        ordered_rows = rows + ['Grand Total']
+
+    header_cells = [
+        html.Th(f"{row_label} \\ {col_label} — {m_label}", style={
+            'padding': '12px 16px', 'textAlign': 'left', 'fontWeight': '700',
+            'color': '#1E293B', 'borderBottom': '2px solid #CBD5E1', 'backgroundColor': '#F8FAFC',
+            'fontSize': '12px', 'fontFamily': 'Outfit, sans-serif'
+        })
+    ] + [
+        html.Th(str(c).title(), style={
+            'padding': '12px 14px', 'textAlign': 'right' if c == 'Total' else 'center',
+            'fontWeight': '700', 'color': '#1E293B', 'borderBottom': '2px solid #CBD5E1',
+            'backgroundColor': '#F1F5F9' if c == 'Total' else '#F8FAFC', 'fontSize': '12px'
+        })
+        for c in ordered_cols
+    ]
+
+    body_rows = []
+    for idx, r_name in enumerate(ordered_rows):
+        is_grand_total = (r_name == 'Grand Total')
+        cells = [html.Td(r_name, style={
+            'padding': '10px 16px', 'borderBottom': '1px solid #E2E8F0',
+            'fontWeight': '700' if is_grand_total else '600', 'color': '#0F172A',
+            'fontSize': '12px', 'whiteSpace': 'nowrap'
+        })]
+
+        for c_name in ordered_cols:
+            val = pivot.loc[r_name, c_name]
+            display_txt = fmt_fn(val) if val > 0 else "0"
+            
+            if c_name == 'Total' or is_grand_total:
+                cell_style = {
+                    'padding': '10px 14px', 'textAlign': 'right', 'borderBottom': '1px solid #E2E8F0',
+                    'fontWeight': '700', 'color': '#1E293B', 'fontSize': '12px'
+                }
+            else:
+                bg_color = 'transparent'
+                color = '#334155' if val > 0 else '#9CA3AF'
+                if 'SETTLED' in str(c_name).upper() and val > 0:
+                    bg_color = '#F0FDF4'
+                    color = '#166534'
+                elif ('REJECT' in str(c_name).upper() or 'REPUDIAT' in str(c_name).upper()) and val > 0:
+                    bg_color = '#FEF2F2'
+                    color = '#991B1B'
+
+                cell_style = {
+                    'padding': '10px 14px', 'textAlign': 'center', 'borderBottom': '1px solid #E2E8F0',
+                    'backgroundColor': bg_color, 'color': color, 'fontSize': '12px', 'whiteSpace': 'nowrap'
+                }
+                if val > 0:
+                    cell_style['cursor'] = 'pointer'
+
+            if val > 0 and not is_grand_total and c_name != 'Total':
+                cells.append(html.Td(display_txt, style=cell_style, className='pivot-clickable',
+                                     id={'type': 'pivot-cell-dynamic', 'row_col': row_dim, 'col_col': col_dim, 'row_val': r_name, 'col_val': c_name}, n_clicks=0))
+            else:
+                cells.append(html.Td(display_txt, style=cell_style))
+
+        row_bg = '#F1F5F9' if is_grand_total else ('#F8FAFC' if idx % 2 == 1 else 'white')
+        body_rows.append(html.Tr(cells, style={'backgroundColor': row_bg}))
+
+    table = html.Table([html.Thead(html.Tr(header_cells)), html.Tbody(body_rows)], style={
+        'width': '100%', 'borderCollapse': 'collapse', 'fontFamily': 'Inter, sans-serif'
+    })
+    return html.Div(table, style={'overflowX': 'auto', 'borderRadius': '8px', 'border': '1px solid #E2E8F0'})
+
+
+@app.callback(
+    Output("download-pivot-csv", "data"),
+    Input("btn-export-dynamic-pivot", "n_clicks"),
+    [State("pivot-row-dim", "value"),
+     State("pivot-col-dim", "value"),
+     State("uploaded-data-store", "data")],
+    prevent_initial_call=True
+)
+def export_dynamic_pivot_csv(n_clicks, row_dim, col_dim, stored_data):
+    if not n_clicks:
+        return dash.no_update
+    df = get_current_df(stored_data)
+    if df is None or df.empty:
+        df = db.get_data()
+
+    if col_dim == 'none':
+        grouped = df.groupby(row_dim, dropna=False).agg(
+            total_cases=('estimate', 'count'),
+            sum_estimate=('estimate', 'sum'),
+            sum_settlement=('claim_settlement_amount', 'sum')
+        ).reset_index()
+        return dcc.send_data_frame(grouped.to_csv, filename=f"pivot_{row_dim}_summary.csv", index=False)
+    else:
+        pivot = pd.pivot_table(df, index=row_dim, columns=col_dim, values='estimate', aggfunc='count', fill_value=0)
+        return dcc.send_data_frame(pivot.to_csv, filename=f"pivot_{row_dim}_vs_{col_dim}.csv")
+
 

@@ -24,62 +24,20 @@ def _get_engine():
         db_password = os.getenv('DB_PASSWORD', 'root')
         db_name     = os.getenv('DB_NAME', 'insurance_brokerage')
         _engine = create_engine(
-            f"mysql+mysqldb://{db_user}:{db_password}@{db_host}/{db_name}",
+            f"mysql+pymysql://{db_user}:{db_password}@{db_host}/{db_name}",
             pool_pre_ping=True,
             connect_args={"connect_timeout": 10},
         )
     return _engine
 
 def _load_from_db() -> pd.DataFrame | None:
-    """Execute the full policy join query and return a DataFrame, or None on error."""
+    """Execute the claims query and return a DataFrame, or None on error."""
     try:
         from sqlalchemy import text
         engine = _get_engine()
-
-        query = """
-            SELECT
-                p.policy_number,
-                c.name as client_name,
-                c.client_type,
-                ca.carrier_name,
-                pr.category,
-                pr.sub_category,
-                p.issue_date,
-                p.expiry_date,
-                p.premium_amount,
-                p.status as policy_status,
-                p.distribution_channel,
-                c.region_name as region,
-                IFNULL(cl.claim_amount, 0) as claim_amount,
-                IFNULL(cl.status, 'No Claim') as claim_status,
-                sc.calculated_amount as commission_earned
-            FROM policies p
-            LEFT JOIN clients c ON p.client_id = c.client_id AND c.is_active = 1
-            LEFT JOIN products pr ON p.product_id = pr.product_id AND pr.is_active = 1
-            LEFT JOIN carriers ca ON pr.carrier_id = ca.carrier_id AND ca.is_active = 1
-            LEFT JOIN (
-                SELECT policy_id, SUM(quote_approved_amount) as claim_amount, MAX(status) as status
-                FROM claims
-                WHERE is_active = 1
-                GROUP BY policy_id
-            ) cl ON p.policy_id = cl.policy_id
-            LEFT JOIN (
-                SELECT policy_id, SUM(calculated_amount) as calculated_amount
-                FROM sales_commissions
-                WHERE is_active = 1
-                GROUP BY policy_id
-            ) sc ON p.policy_id = sc.policy_id
-            WHERE p.is_active = 1
-        """
         with engine.connect() as conn:
-            try:
-                row_count = conn.execute(text("SELECT COUNT(*) FROM policies WHERE is_active = 1")).scalar()
-                print(f"[db] Database pre-check: {row_count} active policies found in database.")
-            except Exception as count_err:
-                print(f"[db] Error performing count pre-check: {count_err}")
-
-            df = pd.read_sql(text(query), conn)
-        print(f"[db] Loaded {len(df)} rows from MySQL insurance_brokerage schema.")
+            df = pd.read_sql(text("SELECT * FROM claims"), conn)
+        print(f"[db] Loaded {len(df)} rows from MySQL.")
         return df
 
     except Exception as e:
@@ -87,15 +45,37 @@ def _load_from_db() -> pd.DataFrame | None:
         return None
 
 
+_motor_cache_df = None
+_motor_cache_ts = 0.0
+
+def get_motor_claims_data(force: bool = False) -> pd.DataFrame:
+    """Fetch 67-column Motor claims operational dataset from MySQL."""
+    global _motor_cache_df, _motor_cache_ts
+    now = time.monotonic()
+    if not force and _motor_cache_df is not None and (now - _motor_cache_ts) < _CACHE_TTL:
+        return _motor_cache_df
+    try:
+        from sqlalchemy import text
+        engine = _get_engine()
+        with engine.connect() as conn:
+            df = pd.read_sql(text("SELECT * FROM motor_claims_detailed"), conn)
+        print(f"[db] Loaded {len(df)} motor claims from MySQL.")
+        _motor_cache_df = df
+        _motor_cache_ts = now
+        return df
+    except Exception as e:
+        print(f"[db] MySQL motor_claims_detailed error: {e}")
+        return pd.DataFrame()
+
+
 def _cast(df: pd.DataFrame) -> pd.DataFrame:
     """Apply numeric and date coercions to a raw DataFrame."""
-    for col in ['premium_amount', 'claim_amount', 'commission_earned']:
+    for col in ['estimate', 'claim_settlement_amount', 'estimate_of_loss']:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
-    if 'issue_date' in df.columns:
-        df['issue_date'] = pd.to_datetime(df['issue_date'], errors='coerce')
-    if 'expiry_date' in df.columns:
-        df['expiry_date'] = pd.to_datetime(df['expiry_date'], errors='coerce')
+    for col in ['date_of_loss_date_of_admission', 'month_of_claim']:
+        if col in df.columns:
+            df[col] = pd.to_datetime(df[col], errors='coerce')
     return df
 
 
@@ -142,8 +122,34 @@ def force_refresh() -> pd.DataFrame:
     return fresh
 
 
-# df_global is lazily loaded on first request to prevent slow application startup
+# df_global is eagerly pre-warmed in a background thread so the first browser
+# request hits the in-memory cache instead of waiting for a full MySQL round-trip.
 df_global = None
+
+
+def _prewarm_cache() -> None:
+    """Background thread target: load data into cache and warm up Plotly at server startup."""
+    try:
+        get_data(force=True)
+        print("[db] Background pre-warm: claims data loaded.")
+    except Exception as e:
+        print(f"[db] Background pre-warm data error: {e}")
+
+    # Trigger Plotly's lazy import chain so it completes during boot,
+    # not on the first user click (which would add ~2-4 seconds to the response).
+    try:
+        import pandas as _pd
+        import plotly.express as _px
+        _dummy = _px.pie(_pd.DataFrame({'v': [1], 'n': ['x']}), values='v', names='n')
+        del _dummy, _px, _pd
+        print("[db] Background pre-warm: Plotly warmed up.")
+    except Exception as e:
+        print(f"[db] Background pre-warm Plotly error: {e}")
+
+
+import threading as _threading
+_prewarm_thread = _threading.Thread(target=_prewarm_cache, daemon=True, name="db-prewarm")
+_prewarm_thread.start()
 
 
 import logging

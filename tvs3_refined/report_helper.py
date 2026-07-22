@@ -38,10 +38,15 @@ WHITE   = colors.white
 BLACK   = colors.HexColor("#0F172A")
 
 LOGO_PATH = os.path.join(os.path.dirname(__file__), "assets", "tvs logo new.png")
-FONT_DIR  = r"C:\Windows\Fonts"
-
-# ── Register premium TTF fonts ────────────────────────────────────────────────
+# ── Register premium TTF fonts (Cross-Platform) ─────────────────────────────
 def _register_fonts():
+    font_dirs = [
+        r"C:\Windows\Fonts",
+        "/usr/share/fonts",
+        "/usr/share/fonts/truetype",
+        "/Library/Fonts",
+        os.path.join(os.path.dirname(__file__), "assets", "fonts")
+    ]
     pairs = [
         ("Calibri",       "calibri.ttf"),
         ("Calibri-Bold",  "calibrib.ttf"),
@@ -52,14 +57,19 @@ def _register_fonts():
         ("Trebuchet-Bold","trebucbd.ttf"),
     ]
     registered = []
-    for name, fname in pairs:
-        path = os.path.join(FONT_DIR, fname)
-        if os.path.exists(path):
-            try:
-                pdfmetrics.registerFont(TTFont(name, path))
-                registered.append(name)
-            except Exception:
-                pass
+    for font_dir in font_dirs:
+        if not os.path.exists(font_dir):
+            continue
+        for name, fname in pairs:
+            if name in registered:
+                continue
+            path = os.path.join(font_dir, fname)
+            if os.path.exists(path):
+                try:
+                    pdfmetrics.registerFont(TTFont(name, path))
+                    registered.append(name)
+                except Exception:
+                    pass
     # Pick body/heading pair
     body    = "Calibri"       if "Calibri"      in registered else "Helvetica"
     bodyB   = "Calibri-Bold"  if "Calibri-Bold" in registered else "Helvetica-Bold"
